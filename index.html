@@ -18,6 +18,7 @@
         .option-list::-webkit-scrollbar-track { background: #f1f1f1; }
         .option-list::-webkit-scrollbar-thumb { background: #a0aec0; border-radius: 10px; }
         .chevron-icon { transition: transform 0.2s ease-in-out; }
+        input[type="checkbox"]:disabled + span { color: #a0aec0; cursor: not-allowed; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -58,23 +59,41 @@
     <div id="image-viewer-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
         <div class="relative max-w-4xl max-h-full"><button id="close-image-viewer" class="absolute -top-3 -right-3 text-white bg-black bg-opacity-50 rounded-full h-8 w-8 flex items-center justify-center text-2xl z-10" aria-label="Close">&times;</button><img id="full-view-image" src="" alt="Full view" class="max-w-full max-h-screen object-contain rounded-lg"></div>
     </div>
+    <!-- Custom Alert Modal -->
+    <div id="alert-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-sm mx-auto">
+            <div class="p-4 border-b"><h2 id="alert-title" class="text-xl font-semibold">Notice</h2></div>
+            <div id="alert-message" class="p-6"></div>
+            <div class="p-4 bg-gray-50 border-t flex justify-end">
+                <button id="alert-ok-btn" class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 transition">OK</button>
+            </div>
+        </div>
+    </div>
+    <!-- Confirmation Modal -->
+    <div id="confirm-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-sm mx-auto">
+            <div class="p-4 border-b"><h2 id="confirm-title" class="text-xl font-semibold">Confirmation</h2></div>
+            <div id="confirm-message" class="p-6"></div>
+            <div class="p-4 bg-gray-50 border-t flex justify-end space-x-2">
+                <button id="confirm-cancel-btn" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                <button id="confirm-ok-btn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">Confirm</button>
+            </div>
+        </div>
+    </div>
+
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyCg2GXbIV9doKDMN_S1PFsohaV5Iu3N6fE",
-  authDomain: "lafandar-catalog.firebaseapp.com",
-  projectId: "lafandar-catalog",
-  storageBucket: "lafandar-catalog.firebasestorage.app",
-  messagingSenderId: "71424068498",
-  appId: "1:71424068498:web:ad1ac1ddc654f88a790f4b"
+  apiKey: "AIzaSyAuO5iyXCHYZS9nS2BViu-259sb2CUSZjo",
+  authDomain: "tshirt-catalog-v2.firebaseapp.com",
+  projectId: "tshirt-catalog-v2",
+  storageBucket: "tshirt-catalog-v2.firebasestorage.app",
+  messagingSenderId: "428518895959",
+  appId: "1:428518895959:web:8e1fccd4d6f1e2c8b00e12"
 };
-        if (firebaseConfig.apiKey === "YOUR_API_KEY") {
-            document.getElementById('product-grid').innerHTML = `<div class="col-span-full p-8 text-center bg-red-100 border border-red-400 text-red-700 rounded-lg"><h2 class="text-2xl font-bold mb-4">Configuration Error</h2><p>The Firebase configuration is missing or incorrect.</p></div>`;
-            throw new Error("Firebase configuration is not set.");
-        }
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -84,6 +103,7 @@
             let products = [];
             let cart = {}; 
             let toastTimer;
+            let confirmCallback = null;
 
             function loadCart() { const savedCart = localStorage.getItem('tshirtCart'); if (savedCart) cart = JSON.parse(savedCart); }
             function saveCart() { localStorage.setItem('tshirtCart', JSON.stringify(cart)); }
@@ -93,6 +113,8 @@
             const cartModal = document.getElementById('cart-modal');
             const detailsModal = document.getElementById('details-modal');
             const imageViewerModal = document.getElementById('image-viewer-modal');
+            const alertModal = document.getElementById('alert-modal');
+            const confirmModal = document.getElementById('confirm-modal');
             const fullViewImage = document.getElementById('full-view-image');
             const closeImageViewerBtn = document.getElementById('close-image-viewer');
             const viewCartButton = document.getElementById('view-cart-button');
@@ -104,6 +126,26 @@
             const clearCartBtn = document.getElementById('clear-cart-btn');
             const toast = document.getElementById('toast');
             const ownerDetailsForm = document.getElementById('owner-details-form');
+
+            function showAlert(title, message) {
+                document.getElementById('alert-title').textContent = title;
+                document.getElementById('alert-message').innerHTML = message;
+                toggleModal(alertModal, true);
+            }
+
+            function showConfirm(title, message, onConfirm) {
+                document.getElementById('confirm-title').textContent = title;
+                document.getElementById('confirm-message').innerHTML = message;
+                confirmCallback = onConfirm;
+                toggleModal(confirmModal, true);
+            }
+
+            document.getElementById('alert-ok-btn').addEventListener('click', () => toggleModal(alertModal, false));
+            document.getElementById('confirm-ok-btn').addEventListener('click', () => {
+                if (confirmCallback) confirmCallback();
+                toggleModal(confirmModal, false);
+            });
+            document.getElementById('confirm-cancel-btn').addEventListener('click', () => toggleModal(confirmModal, false));
 
             async function fetchProducts() {
                 try {
@@ -120,9 +162,10 @@
                 products.forEach(product => {
                     const card = document.createElement('div');
                     card.className = 'bg-white rounded-lg shadow-md overflow-hidden flex flex-col';
+                    card.dataset.productId = product.id;
                     
                     const hasVariants = product.variants && Object.keys(product.variants).length > 0;
-
+                    
                     const createCollapsibleCheckboxList = (title, items, type, isVariant = false) => {
                         let checkboxHTML;
                         let gridClass = 'grid-cols-2';
@@ -164,9 +207,10 @@
                                 ${sizeSection}
                                 ${colorSection}
                             </div>
+                            <p class="stock-display text-center text-sm font-medium text-indigo-600 h-5 mt-2"></p>
                             <div class="flex items-center space-x-2 border-t pt-3 mt-3">
                                 <input type="number" min="1" value="1" class="quantity-input w-20 p-2 border border-gray-300 rounded-md text-center">
-                                <button class="add-to-cart-btn flex-1 bg-indigo-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-600 transition" data-product-id="${product.id}">Add Selected</button>
+                                <button class="add-to-cart-btn flex-1 bg-indigo-500 text-white font-semibold py-2 px-4 rounded-md hover:bg-indigo-600 transition">Add Selected</button>
                             </div>
                         </div>
                     `;
@@ -187,14 +231,46 @@
                 }
             }
             
-            function updateCart() { /* Unchanged from previous version */ }
-            function showToast() { /* Unchanged from previous version */ }
-            function toggleModal(modal, show) { /* Unchanged from previous version */ }
-            
+            function updateStockDisplay(card) {
+                const productId = card.dataset.productId;
+                const product = products.find(p => p.id === productId);
+                if (!product) return;
+
+                const stockInfo = product.stockInfo || {};
+                const stockDisplay = card.querySelector('.stock-display');
+
+                const getSelected = (type) => Array.from(card.querySelectorAll(`input[data-type="${type}"]:checked`)).map(cb => cb.value);
+
+                const selectedVariants = getSelected('variant');
+                const selectedSizes = getSelected('size');
+                const selectedColors = getSelected('color');
+
+                if (selectedVariants.length === 1 && selectedSizes.length === 1 && selectedColors.length === 1) {
+                    const variant = selectedVariants[0];
+                    const size = selectedSizes[0];
+                    const color = selectedColors[0];
+
+                    const stockKey = `${variant}_${size}_${color}`;
+                    const cartItemId = `${productId}-${variant}-${size}-${color}`;
+
+                    const totalStock = stockInfo[stockKey] || 0;
+                    const quantityInCart = cart[cartItemId] ? cart[cartItemId].quantity : 0;
+                    const displayStock = totalStock - quantityInCart;
+
+                    stockDisplay.textContent = displayStock > 0 ? `${displayStock} in stock` : 'Out of stock';
+                } else {
+                    stockDisplay.textContent = '';
+                }
+            }
+
             productGrid.addEventListener('click', (e) => {
                 if (e.target.classList.contains('add-to-cart-btn')) {
+                    const card = e.target.closest('[data-product-id]');
                     const cardBody = e.target.closest('.p-4');
-                    const productId = e.target.dataset.productId;
+                    const productId = card.dataset.productId;
+                    const product = products.find(p => p.id === productId);
+                    const stockInfo = product.stockInfo || {};
+
                     const quantityInput = cardBody.querySelector('.quantity-input');
                     const quantity = parseInt(quantityInput.value, 10);
 
@@ -205,20 +281,32 @@
                     const selectedColors = getSelected('color');
 
                     if (isNaN(quantity) || quantity < 1) {
-                        alert("Please enter a valid quantity.");
+                        showAlert("Invalid Quantity", "Please enter a valid quantity.");
                         return;
                     }
                     if (selectedVariants.length === 0 || selectedSizes.length === 0 || selectedColors.length === 0) {
-                        alert("Please select at least one option from each category (Category, Size, and Color).");
+                        showAlert("Selection Missing", "Please select at least one option from each category (Category, Size, and Color).");
                         return;
                     }
 
                     let itemsAdded = 0;
+                    let unavailableItems = [];
+
                     selectedVariants.forEach(variant => {
                         selectedSizes.forEach(size => {
                             selectedColors.forEach(color => {
-                                addToCart(productId, variant, quantity, size, color);
-                                itemsAdded++;
+                                const stockKey = `${variant}_${size}_${color}`;
+                                const cartItemId = `${productId}-${variant}-${size}-${color}`;
+                                const availableStock = stockInfo[stockKey] || 0;
+                                const quantityInCart = cart[cartItemId] ? cart[cartItemId].quantity : 0;
+                                
+                                if (availableStock >= quantity + quantityInCart) {
+                                    addToCart(productId, variant, quantity, size, color);
+                                    itemsAdded++;
+                                } else {
+                                    const remainingStock = availableStock - quantityInCart;
+                                    unavailableItems.push(`- ${product.name} (${variant}, ${size}, ${color}) - Only ${remainingStock > 0 ? remainingStock : 0} left`);
+                                }
                             });
                         });
                     });
@@ -226,6 +314,11 @@
                     if (itemsAdded > 0) {
                         updateCart();
                         showToast();
+                        updateStockDisplay(card);
+                    }
+
+                    if (unavailableItems.length > 0) {
+                        showAlert("Some Items Unavailable", "The following items have insufficient stock and were not added to your cart:<br><br><div class='text-left text-sm'>" + unavailableItems.join('<br>') + "</div>");
                     }
                 }
                 
@@ -234,7 +327,6 @@
                     toggleModal(imageViewerModal, true);
                 }
 
-                // NEW: Handle collapsible toggle
                 const toggle = e.target.closest('.collapsible-toggle');
                 if (toggle) {
                     const content = toggle.nextElementSibling;
@@ -244,8 +336,14 @@
                 }
             });
 
-            // --- All other event listeners and full function definitions remain the same ---
-            updateCart = function() {
+            productGrid.addEventListener('change', (e) => {
+                if (e.target.matches('input[type="checkbox"]')) {
+                    const card = e.target.closest('[data-product-id]');
+                    updateStockDisplay(card);
+                }
+            });
+
+            function updateCart() {
                 let totalItems = 0; let totalPrice = 0; cartItemsContainer.innerHTML = ''; const isCartEmpty = Object.keys(cart).length === 0;
                 if (isCartEmpty) { cartItemsContainer.innerHTML = '<p class="text-gray-500 text-center">Your cart is empty.</p>'; checkoutButton.disabled = true; checkoutButton.classList.add('opacity-50', 'cursor-not-allowed'); clearCartBtn.style.display = 'none'; } 
                 else { checkoutButton.disabled = false; checkoutButton.classList.remove('opacity-50', 'cursor-not-allowed'); clearCartBtn.style.display = 'block';
@@ -253,15 +351,39 @@
                 }
                 cartCount.textContent = totalItems; cartTotal.textContent = `₹${totalPrice.toFixed(2)}`; saveCart();
             }
-            showToast = function() { clearTimeout(toastTimer); toast.classList.remove('opacity-0'); toastTimer = setTimeout(() => { toast.classList.add('opacity-0'); }, 2000); }
-            toggleModal = function(modal, show) { if (show) modal.classList.add('is-open'); else modal.classList.remove('is-open'); }
-            cartItemsContainer.addEventListener('click', (e) => { if (e.target.classList.contains('remove-from-cart-btn')) { delete cart[e.target.dataset.cartItemId]; updateCart(); } });
+            function showToast() { clearTimeout(toastTimer); toast.classList.remove('opacity-0'); toastTimer = setTimeout(() => { toast.classList.add('opacity-0'); }, 2000); }
+            function toggleModal(modal, show) { if (show) modal.classList.add('is-open'); else modal.classList.remove('is-open'); }
+            
+            cartItemsContainer.addEventListener('click', (e) => { 
+                if (e.target.classList.contains('remove-from-cart-btn')) { 
+                    const cartItemId = e.target.dataset.cartItemId;
+                    delete cart[cartItemId]; 
+                    updateCart(); 
+                    const productId = cartItemId.split('-')[0];
+                    const card = document.querySelector(`[data-product-id="${productId}"]`);
+                    if (card) {
+                        updateStockDisplay(card);
+                    }
+                } 
+            });
+
             viewCartButton.addEventListener('click', () => { updateCart(); toggleModal(cartModal, true); });
             checkoutButton.addEventListener('click', () => { toggleModal(cartModal, false); toggleModal(detailsModal, true); });
-            document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', () => { toggleModal(cartModal, false); toggleModal(detailsModal, false); }));
+            document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', (e) => { 
+                const modal = e.target.closest('.modal');
+                if(modal) toggleModal(modal, false);
+            }));
             closeImageViewerBtn.addEventListener('click', () => toggleModal(imageViewerModal, false));
             imageViewerModal.addEventListener('click', (e) => { if (e.target === imageViewerModal) toggleModal(imageViewerModal, false); });
-            clearCartBtn.addEventListener('click', () => { if (confirm("Are you sure you want to clear your entire cart?")) { cart = {}; updateCart(); } });
+            
+            clearCartBtn.addEventListener('click', () => {
+                showConfirm("Clear Cart", "Are you sure you want to clear your entire cart?", () => {
+                    cart = {};
+                    updateCart();
+                    document.querySelectorAll('[data-product-id]').forEach(card => updateStockDisplay(card));
+                });
+            });
+
             sendWhatsappButton.addEventListener('click', () => { if (!ownerDetailsForm.checkValidity()) { ownerDetailsForm.reportValidity(); return; } const formData = new FormData(ownerDetailsForm); const ownerDetails = Object.fromEntries(formData.entries()); let message = `*New T-Shirt Order*\n\n*From:* ${ownerDetails.ownerName}\n*Shop:* ${ownerDetails.shopName}\n*Address:* ${ownerDetails.shopAddress}\n\n--- *Order Details* ---\n`; let totalPrice = 0; for (const cartItemId in cart) { const item = cart[cartItemId]; const itemTotal = item.quantity * item.price; totalPrice += itemTotal; message += `- *${item.name}* (${item.category}, ${item.size}, ${item.color})\n  *Qty:* ${item.quantity} x ₹${item.price.toFixed(2)} = *₹${itemTotal.toFixed(2)}*\n`; } message += `\n*GRAND TOTAL: ₹${totalPrice.toFixed(2)}*\n\nThank you!`; const whatsappUrl = `https://wa.me/${yourWhatsAppNumber}?text=${encodeURIComponent(message)}`; window.open(whatsappUrl, '_blank'); });
 
             loadCart();
@@ -270,5 +392,4 @@
         });
     </script>
 </body>
-
 </html>
