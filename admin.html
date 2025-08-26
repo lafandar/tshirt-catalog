@@ -13,6 +13,9 @@
         .list-item > div:last-child { border-bottom: none; }
         .progress-bar { width: 100%; background-color: #e5e7eb; border-radius: 9999px; overflow: hidden; height: 0.75rem; }
         .progress-bar-fill { height: 100%; background-color: #4f46e5; border-radius: 9999px; transition: width 0.2s ease-in-out; }
+        #stock-inputs-container::-webkit-scrollbar { width: 6px; }
+        #stock-inputs-container::-webkit-scrollbar-track { background: #f1f1f1; }
+        #stock-inputs-container::-webkit-scrollbar-thumb { background: #a0aec0; border-radius: 10px; }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -58,7 +61,46 @@
 
     <!-- Modals (Product, Global Variant) -->
     <div id="product-modal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl mx-auto"><form id="product-form" class="p-6"><h2 id="modal-title" class="text-2xl font-semibold mb-6">Add/Edit Design</h2><input type="hidden" id="product-id"><input type="hidden" id="existing-image-url"><div class="grid grid-cols-1 md:grid-cols-2 gap-6"><div><div class="mb-4"><label for="product-name" class="block text-sm font-medium text-gray-700 mb-1">Design Name</label><input type="text" id="product-name" class="w-full p-2 border border-gray-300 rounded-md" required></div><div class="mb-4"><label for="product-image-file" class="block text-sm font-medium text-gray-700 mb-1">Product Image</label><input type="file" id="product-image-file" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" accept="image/png, image/jpeg, image/webp"><p class="text-xs text-gray-500 mt-1">Leave blank to keep existing image.</p></div><div id="upload-progress-container" class="mb-4" style="display: none;"><div class="progress-bar"><div id="upload-progress-bar" class="progress-bar-fill" style="width: 0%;"></div></div></div><div class="mb-4"><label for="product-sizes" class="block text-sm font-medium text-gray-700 mb-1">Available Sizes (comma-separated)</label><input type="text" id="product-sizes" placeholder="e.g. S, M, L, XL" class="w-full p-2 border border-gray-300 rounded-md" required></div><div class="mb-4"><label for="product-colors" class="block text-sm font-medium text-gray-700 mb-1">Available Colors (comma-separated)</label><input type="text" id="product-colors" placeholder="e.g. Black, White, Navy" class="w-full p-2 border border-gray-300 rounded-md" required></div></div><div class="bg-gray-50 p-4 rounded-lg"><h3 class="text-lg font-semibold mb-2">Product Variants</h3><div id="variant-list" class="mb-4 max-h-48 overflow-y-auto space-y-2"></div><div class="flex gap-2 items-end border-t pt-3"><select id="global-variant-select" class="w-full p-2 border border-gray-300 rounded-md"></select><button type="button" id="add-variant-btn" class="bg-indigo-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-indigo-600 text-sm">Add</button></div><p id="variant-error" class="text-xs text-red-500 mt-1" style="display: none;">Please add at least one variant.</p></div></div><div class="pt-6 border-t mt-6 flex justify-end space-x-2"><button type="button" class="cancel-btn bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button><button type="submit" id="save-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600">Save Design</button></div></form></div>
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto">
+            <form id="product-form" class="p-6">
+                <h2 id="modal-title" class="text-2xl font-semibold mb-6">Add/Edit Design</h2>
+                <input type="hidden" id="product-id">
+                <input type="hidden" id="existing-image-url">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Left Column: Basic Info -->
+                    <div>
+                        <div class="mb-4"><label for="product-name" class="block text-sm font-medium text-gray-700 mb-1">Design Name</label><input type="text" id="product-name" class="w-full p-2 border border-gray-300 rounded-md" required></div>
+                        <div class="mb-4"><label for="product-image-file" class="block text-sm font-medium text-gray-700 mb-1">Product Image</label><input type="file" id="product-image-file" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" accept="image/png, image/jpeg, image/webp"><p class="text-xs text-gray-500 mt-1">Leave blank to keep existing image.</p></div>
+                        <div id="upload-progress-container" class="mb-4" style="display: none;"><div class="progress-bar"><div id="upload-progress-bar" class="progress-bar-fill" style="width: 0%;"></div></div></div>
+                        <div class="mb-4"><label for="product-sizes" class="block text-sm font-medium text-gray-700 mb-1">Available Sizes (comma-separated)</label><input type="text" id="product-sizes" placeholder="e.g. S, M, L, XL" class="w-full p-2 border border-gray-300 rounded-md" required></div>
+                        <div class="mb-4"><label for="product-colors" class="block text-sm font-medium text-gray-700 mb-1">Available Colors (comma-separated)</label><input type="text" id="product-colors" placeholder="e.g. Black, White, Navy" class="w-full p-2 border border-gray-300 rounded-md" required></div>
+                    </div>
+                    <!-- Right Column: Variants & Stock -->
+                    <div>
+                        <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                            <h3 class="text-lg font-semibold mb-2">1. Add Product Variants</h3>
+                            <div id="product-variant-list" class="mb-4 max-h-24 overflow-y-auto space-y-2"></div>
+                            <div class="flex gap-2 items-end border-t pt-3">
+                                <select id="global-variant-select" class="w-full p-2 border border-gray-300 rounded-md"></select>
+                                <button type="button" id="add-variant-btn" class="bg-indigo-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-indigo-600 text-sm">Add</button>
+                            </div>
+                            <p id="variant-error" class="text-xs text-red-500 mt-1" style="display: none;">Please add at least one variant.</p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h3 class="text-lg font-semibold mb-2">2. Manage Stock</h3>
+                            <p class="text-xs text-gray-500 mb-3">Define sizes, colors, and variants first to see stock inputs.</p>
+                            <div id="stock-inputs-container" class="max-h-60 overflow-y-auto space-y-3 pr-2">
+                                <!-- Stock inputs will be generated here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="pt-6 border-t mt-6 flex justify-end space-x-2">
+                    <button type="button" class="cancel-btn bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                    <button type="submit" id="save-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600">Save Design</button>
+                </div>
+            </form>
+        </div>
     </div>
     <div id="global-variant-modal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4 z-50">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-auto"><div class="p-6"><h2 class="text-2xl font-semibold mb-4">Manage Global Variants</h2><div id="global-variant-list" class="mb-4 max-h-64 overflow-y-auto"></div><form id="global-variant-form" class="p-4 border-t"><h3 class="font-semibold mb-2">Add New Variant</h3><div class="flex gap-4"><input type="text" id="new-global-variant-name" placeholder="Variant Name (e.g. Hoodie)" class="w-full p-2 border border-gray-300 rounded-md" required><input type="number" id="new-global-variant-price" placeholder="Price (₹)" min="0" class="w-full p-2 border border-gray-300 rounded-md" required><button type="submit" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">Add</button></div></form></div><div class="p-4 bg-gray-50 border-t flex justify-end"><button type="button" class="cancel-btn bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Close</button></div></div>
@@ -71,12 +113,12 @@
 
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyCg2GXbIV9doKDMN_S1PFsohaV5Iu3N6fE",
-  authDomain: "lafandar-catalog.firebaseapp.com",
-  projectId: "lafandar-catalog",
-  storageBucket: "lafandar-catalog.firebasestorage.app",
-  messagingSenderId: "71424068498",
-  appId: "1:71424068498:web:ad1ac1ddc654f88a790f4b"
+  apiKey: "AIzaSyAuO5iyXCHYZS9nS2BViu-259sb2CUSZjo",
+  authDomain: "tshirt-catalog-v2.firebaseapp.com",
+  projectId: "tshirt-catalog-v2",
+  storageBucket: "tshirt-catalog-v2.firebasestorage.app",
+  messagingSenderId: "428518895959",
+  appId: "1:428518895959:web:8e1fccd4d6f1e2c8b00e12"
 };
 
         firebase.initializeApp(firebaseConfig);
@@ -88,6 +130,7 @@
 
         let globalVariants = {};
         let currentProductVariants = {};
+        let currentProductStock = {};
 
         document.addEventListener('DOMContentLoaded', () => {
             const loginView = document.getElementById('login-view');
@@ -97,16 +140,13 @@
             const logoutBtn = document.getElementById('logout-btn');
             const userEmailEl = document.getElementById('user-email');
             
-            // --- AUTHENTICATION LOGIC ---
             auth.onAuthStateChanged(user => {
                 if (user) {
-                    // User is signed in
                     loginView.style.display = 'none';
                     adminPanel.style.display = 'block';
                     userEmailEl.textContent = `Logged in as: ${user.email}`;
                     initializeAdminPanel();
                 } else {
-                    // User is signed out
                     loginView.style.display = 'flex';
                     adminPanel.style.display = 'none';
                 }
@@ -114,20 +154,15 @@
 
             loginForm.addEventListener('submit', (e) => {
                 e.preventDefault();
-                const email = loginForm.email.value;
-                const password = loginForm.password.value;
-                auth.signInWithEmailAndPassword(email, password)
+                auth.signInWithEmailAndPassword(loginForm.email.value, loginForm.password.value)
                     .catch(error => {
                         loginError.textContent = error.message;
                         loginError.style.display = 'block';
                     });
             });
 
-            logoutBtn.addEventListener('click', () => {
-                auth.signOut();
-            });
+            logoutBtn.addEventListener('click', () => { auth.signOut(); });
 
-            // --- ADMIN PANEL INITIALIZATION ---
             function initializeAdminPanel() {
                 const productList = document.getElementById('product-list');
                 const productModal = document.getElementById('product-modal');
@@ -139,12 +174,12 @@
                 const globalVariantSelect = document.getElementById('global-variant-select');
                 const globalVariantListDiv = document.getElementById('global-variant-list');
                 const saveBtn = document.getElementById('save-btn');
-                const variantListDiv = document.getElementById('variant-list');
+                const productVariantListDiv = document.getElementById('product-variant-list');
                 const addVariantBtn = document.getElementById('add-variant-btn');
+                const stockInputsContainer = document.getElementById('stock-inputs-container');
+                const productSizesInput = document.getElementById('product-sizes');
+                const productColorsInput = document.getElementById('product-colors');
 
-                // All other functions (loadGlobalVariants, loadProducts, openProductModal, etc.) remain the same
-                // ... (pasting the full logic below for completeness)
-                
                 async function loadGlobalVariants() {
                     try {
                         const doc = await globalVariantsRef.get();
@@ -169,33 +204,75 @@
                 }
                 
                 function renderCurrentProductVariants() {
-                    variantListDiv.innerHTML = '';
-                    if (Object.keys(currentProductVariants).length === 0) { variantListDiv.innerHTML = '<p class="text-sm text-gray-500 text-center">No variants added yet.</p>'; }
+                    productVariantListDiv.innerHTML = '';
+                    if (Object.keys(currentProductVariants).length === 0) { productVariantListDiv.innerHTML = '<p class="text-sm text-gray-500 text-center">No variants added yet.</p>'; }
                     for (const name in currentProductVariants) {
                         const price = currentProductVariants[name];
                         const itemEl = document.createElement('div');
                         itemEl.className = 'flex items-center justify-between bg-white p-2 rounded';
                         itemEl.innerHTML = `<p class="text-sm font-medium">${name} - ₹${price}</p><button type="button" class="delete-variant-btn text-red-500 hover:text-red-700 text-xs font-bold" data-name="${name}">Remove</button>`;
-                        variantListDiv.appendChild(itemEl);
+                        productVariantListDiv.appendChild(itemEl);
                     }
+                    generateStockInputs();
+                }
+
+                function generateStockInputs() {
+                    stockInputsContainer.innerHTML = '';
+                    const sizes = productSizesInput.value.split(',').map(s => s.trim()).filter(Boolean);
+                    const colors = productColorsInput.value.split(',').map(c => c.trim()).filter(Boolean);
+                    const variants = Object.keys(currentProductVariants);
+
+                    if (sizes.length === 0 || colors.length === 0 || variants.length === 0) {
+                        stockInputsContainer.innerHTML = '<p class="text-sm text-gray-500 text-center">Add variants, sizes, and colors to manage stock.</p>';
+                        return;
+                    }
+
+                    variants.forEach(variant => {
+                        const variantHeader = document.createElement('h4');
+                        variantHeader.className = 'font-semibold text-md text-gray-800';
+                        variantHeader.textContent = variant;
+                        stockInputsContainer.appendChild(variantHeader);
+
+                        sizes.forEach(size => {
+                            colors.forEach(color => {
+                                const stockKey = `${variant}_${size}_${color}`;
+                                const stockValue = currentProductStock[stockKey] || 0;
+
+                                const inputGroup = document.createElement('div');
+                                inputGroup.className = 'flex items-center justify-between gap-2';
+                                inputGroup.innerHTML = `
+                                    <label for="stock_${stockKey}" class="text-sm text-gray-600">${size} / ${color}</label>
+                                    <input type="number" id="stock_${stockKey}" data-stock-key="${stockKey}" value="${stockValue}" min="0" class="stock-input w-20 p-1 border border-gray-300 rounded-md text-center">
+                                `;
+                                stockInputsContainer.appendChild(inputGroup);
+                            });
+                        });
+                    });
                 }
 
                 function openProductModal(product = null) {
-                    productForm.reset(); document.getElementById('upload-progress-container').style.display = 'none'; saveBtn.disabled = false; currentProductVariants = {};
+                    productForm.reset(); 
+                    document.getElementById('upload-progress-container').style.display = 'none'; 
+                    saveBtn.disabled = false; 
+                    currentProductVariants = {};
+                    currentProductStock = {};
+
                     if (product) {
                         document.getElementById('modal-title').textContent = 'Edit Design';
                         document.getElementById('product-id').value = product.id;
                         document.getElementById('product-name').value = product.name;
                         document.getElementById('existing-image-url').value = product.imageUrl;
-                        document.getElementById('product-sizes').value = product.sizes ? product.sizes.join(', ') : '';
-                        document.getElementById('product-colors').value = product.colors ? product.colors.join(', ') : '';
+                        productSizesInput.value = product.sizes ? product.sizes.join(', ') : '';
+                        productColorsInput.value = product.colors ? product.colors.join(', ') : '';
                         if (product.variants) currentProductVariants = product.variants;
+                        if (product.stockInfo) currentProductStock = product.stockInfo;
                     } else {
                         document.getElementById('modal-title').textContent = 'Add New Design';
                         document.getElementById('product-id').value = '';
                         document.getElementById('existing-image-url').value = '';
                     }
-                    renderCurrentProductVariants(); productModal.classList.add('is-open');
+                    renderCurrentProductVariants();
+                    productModal.classList.add('is-open');
                 }
 
                 function closeModal() { productModal.classList.remove('is-open'); globalVariantModal.classList.remove('is-open'); }
@@ -222,21 +299,96 @@
                     } catch (error) { console.error("Error saving product: ", error); alert("Could not save the design."); } 
                     finally { saveBtn.disabled = false; saveBtn.textContent = 'Save Design'; }
                 }
-
+                
+                // Event Listeners
                 addNewBtn.addEventListener('click', () => openProductModal());
                 document.querySelectorAll('.cancel-btn').forEach(btn => btn.addEventListener('click', closeModal));
                 manageGlobalVariantsBtn.addEventListener('click', () => globalVariantModal.classList.add('is-open'));
-                addVariantBtn.addEventListener('click', () => { const selectedVariantName = globalVariantSelect.value; if (selectedVariantName && globalVariants[selectedVariantName]) { currentProductVariants[selectedVariantName] = globalVariants[selectedVariantName]; renderCurrentProductVariants(); } });
-                variantListDiv.addEventListener('click', (e) => { if (e.target.classList.contains('delete-variant-btn')) { delete currentProductVariants[e.target.dataset.name]; renderCurrentProductVariants(); } });
+                
+                [productSizesInput, productColorsInput].forEach(input => {
+                    input.addEventListener('input', generateStockInputs);
+                });
+                
+                addVariantBtn.addEventListener('click', () => { 
+                    const selectedVariantName = globalVariantSelect.value; 
+                    if (selectedVariantName && globalVariants[selectedVariantName]) { 
+                        currentProductVariants[selectedVariantName] = globalVariants[selectedVariantName]; 
+                        renderCurrentProductVariants(); 
+                    } 
+                });
+                
+                productVariantListDiv.addEventListener('click', (e) => { 
+                    if (e.target.classList.contains('delete-variant-btn')) { 
+                        delete currentProductVariants[e.target.dataset.name]; 
+                        renderCurrentProductVariants(); 
+                    } 
+                });
+
                 globalVariantForm.addEventListener('submit', async (e) => { e.preventDefault(); const name = document.getElementById('new-global-variant-name').value.trim(); const price = parseFloat(document.getElementById('new-global-variant-price').value); if (name && !isNaN(price)) { globalVariants[name] = price; await globalVariantsRef.set({ variants: globalVariants }); updateGlobalVariantUI(); globalVariantForm.reset(); } });
-                globalVariantListDiv.addEventListener('click', async (e) => { if (e.target.classList.contains('delete-global-variant-btn')) { const name = e.target.dataset.name; if (confirm(`Are you sure you want to delete the global variant "${name}"?`)) { delete globalVariants[name]; await globalVariantsRef.set({ variants: globalVariants }); updateGlobalVariantUI(); } } });
-                productForm.addEventListener('submit', async (e) => { e.preventDefault(); if (Object.keys(currentProductVariants).length === 0) { document.getElementById('variant-error').style.display = 'block'; return; } document.getElementById('variant-error').style.display = 'none'; saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; const id = document.getElementById('product-id').value; const imageFile = document.getElementById('product-image-file').files[0]; let imageUrl = document.getElementById('existing-image-url').value; const productData = { name: document.getElementById('product-name').value, variants: currentProductVariants, sizes: document.getElementById('product-sizes').value.split(',').map(s => s.trim()).filter(Boolean), colors: document.getElementById('product-colors').value.split(',').map(c => c.trim()).filter(Boolean), }; if (imageFile) { const storageRef = storage.ref(`products/${Date.now()}-${imageFile.name}`); const uploadTask = storageRef.put(imageFile); document.getElementById('upload-progress-container').style.display = 'block'; uploadTask.on('state_changed', (snapshot) => { document.getElementById('upload-progress-bar').style.width = ((snapshot.bytesTransferred / snapshot.totalBytes) * 100) + '%'; }, (error) => { console.error("Upload failed:", error); alert("Image upload failed."); saveBtn.disabled = false; saveBtn.textContent = 'Save Design'; }, async () => { imageUrl = await uploadTask.snapshot.ref.getDownloadURL(); productData.imageUrl = imageUrl; await saveProduct(id, productData); }); } else { productData.imageUrl = imageUrl; await saveProduct(id, productData); } });
-                productList.addEventListener('click', async (e) => { const id = e.target.dataset.id; if (e.target.classList.contains('delete-btn')) { if (confirm(`Are you sure you want to delete "${e.target.dataset.name}"?`)) { try { await productsCollection.doc(id).delete(); } catch (error) { console.error("Error deleting product: ", error); } } } else if (e.target.classList.contains('edit-btn')) { const doc = await productsCollection.doc(id).get(); if (doc.exists) { openProductModal({ id: doc.id, ...doc.data() }); } } });
+                globalVariantListDiv.addEventListener('click', async (e) => { if (e.target.classList.contains('delete-global-variant-btn')) { const name = e.target.dataset.name; if (window.confirm(`Are you sure you want to delete the global variant "${name}"?`)) { delete globalVariants[name]; await globalVariantsRef.set({ variants: globalVariants }); updateGlobalVariantUI(); } } });
+                
+                productForm.addEventListener('submit', async (e) => { 
+                    e.preventDefault(); 
+                    if (Object.keys(currentProductVariants).length === 0) { 
+                        document.getElementById('variant-error').style.display = 'block'; 
+                        return; 
+                    } 
+                    document.getElementById('variant-error').style.display = 'none'; 
+                    saveBtn.disabled = true; 
+                    saveBtn.textContent = 'Saving...'; 
+                    
+                    const id = document.getElementById('product-id').value;
+                    const imageFile = document.getElementById('product-image-file').files[0];
+                    let imageUrl = document.getElementById('existing-image-url').value;
+                    
+                    const newStockInfo = {};
+                    stockInputsContainer.querySelectorAll('.stock-input').forEach(input => {
+                        newStockInfo[input.dataset.stockKey] = parseInt(input.value, 10) || 0;
+                    });
+
+                    const productData = { 
+                        name: document.getElementById('product-name').value, 
+                        variants: currentProductVariants, 
+                        sizes: productSizesInput.value.split(',').map(s => s.trim()).filter(Boolean), 
+                        colors: productColorsInput.value.split(',').map(c => c.trim()).filter(Boolean),
+                        stockInfo: newStockInfo
+                    }; 
+
+                    if (imageFile) { 
+                        const storageRef = storage.ref(`products/${Date.now()}-${imageFile.name}`); 
+                        const uploadTask = storageRef.put(imageFile); 
+                        document.getElementById('upload-progress-container').style.display = 'block'; 
+                        uploadTask.on('state_changed', 
+                            (snapshot) => { document.getElementById('upload-progress-bar').style.width = ((snapshot.bytesTransferred / snapshot.totalBytes) * 100) + '%'; }, 
+                            (error) => { console.error("Upload failed:", error); alert("Image upload failed."); saveBtn.disabled = false; saveBtn.textContent = 'Save Design'; }, 
+                            async () => { 
+                                imageUrl = await uploadTask.snapshot.ref.getDownloadURL(); 
+                                productData.imageUrl = imageUrl; 
+                                await saveProduct(id, productData); 
+                            }
+                        ); 
+                    } else { 
+                        productData.imageUrl = imageUrl; 
+                        await saveProduct(id, productData); 
+                    } 
+                });
+
+                productList.addEventListener('click', async (e) => { 
+                    const id = e.target.dataset.id; 
+                    if (e.target.classList.contains('delete-btn')) { 
+                        if (window.confirm(`Are you sure you want to delete "${e.target.dataset.name}"?`)) { 
+                            try { await productsCollection.doc(id).delete(); } 
+                            catch (error) { console.error("Error deleting product: ", error); } 
+                        } 
+                    } else if (e.target.classList.contains('edit-btn')) { 
+                        const doc = await productsCollection.doc(id).get(); 
+                        if (doc.exists) { openProductModal({ id: doc.id, ...doc.data() }); } 
+                    } 
+                });
                 
                 loadGlobalVariants().then(loadProducts);
             }
         });
     </script>
 </body>
-
 </html>
