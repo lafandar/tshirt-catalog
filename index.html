@@ -219,7 +219,7 @@
                     const hasMultipleImages = product.imageUrls && product.imageUrls.length > 1;
 
                     card.innerHTML = `
-                        <div class="relative">
+                        <div class="relative" data-image-index="0">
                            <img src="${mainImage}" alt="${product.name}" loading="lazy" class="product-image w-full h-64 object-cover cursor-pointer" onerror="this.onerror=null;this.src='https://placehold.co/400x500/cccccc/ffffff?text=Image+Not+Found';">
                            ${hasMultipleImages ? `
                            <button class="image-nav-btn card-prev-btn left-2">
@@ -310,13 +310,13 @@
                 if (!card) return;
                 const productId = card.dataset.productId;
                 const product = products.find(p => p.id === productId);
+                const imageContainer = card.querySelector('.relative[data-image-index]');
 
                 if (e.target.closest('.card-prev-btn') || e.target.closest('.card-next-btn')) {
                     const isNext = e.target.closest('.card-next-btn');
                     const img = card.querySelector('.product-image');
                     const urls = product.imageUrls;
-                    let currentIndex = urls.findIndex(url => img.src.includes(encodeURI(url.split('?')[0])));
-                    if(currentIndex === -1) currentIndex = 0;
+                    let currentIndex = parseInt(imageContainer.dataset.imageIndex, 10);
                     
                     if (isNext) {
                         currentIndex = (currentIndex + 1) % urls.length;
@@ -324,15 +324,14 @@
                         currentIndex = (currentIndex - 1 + urls.length) % urls.length;
                     }
                     img.src = urls[currentIndex];
+                    imageContainer.dataset.imageIndex = currentIndex;
                 }
                 
                 else if (e.target.classList.contains('product-image')) {
                     if (product.imageUrls && product.imageUrls.length > 0) {
                         preloadImages(product.imageUrls); // Preload here as well for touch devices
                         viewerState.images = product.imageUrls;
-                        const currentSrc = e.target.src;
-                        viewerState.currentIndex = product.imageUrls.findIndex(url => currentSrc.includes(encodeURI(url.split('?')[0])));
-                        if (viewerState.currentIndex === -1) viewerState.currentIndex = 0;
+                        viewerState.currentIndex = parseInt(imageContainer.dataset.imageIndex, 10);
                         updateImageViewer();
                         toggleModal(imageViewerModal, true);
                     }
