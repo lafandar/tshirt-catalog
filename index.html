@@ -19,13 +19,20 @@
         .option-list::-webkit-scrollbar-thumb { background: #a0aec0; border-radius: 10px; }
         .chevron-icon { transition: transform 0.2s ease-in-out; }
         input[type="checkbox"]:disabled + span { color: #a0aec0; cursor: not-allowed; }
+        .image-nav-btn {
+            position: absolute; top: 50%; transform: translateY(-50%);
+            background-color: rgba(0,0,0,0.4); color: white; border-radius: 9999px;
+            width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+            border: none; cursor: pointer; opacity: 0; transition: opacity 0.2s;
+        }
+        .relative:hover .image-nav-btn { opacity: 1; }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
     <div class="container mx-auto p-4 sm:p-6 lg:p-8">
         <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-900">T-Shirt Catalog</h1>
+            <h1 class="text-4xl font-bold text-gray-900">LAFANDAR T-Shirt Catalog</h1>
             <p class="text-lg text-gray-600 mt-2">Select multiple options for easy bulk ordering.</p>
         </header>
 
@@ -56,44 +63,37 @@
         <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-md mx-auto"><div class="p-4 border-b flex justify-between items-center"><h2 class="text-2xl font-semibold">Your Details</h2><button class="close-modal-btn text-gray-500 hover:text-gray-800 text-3xl leading-none" aria-label="Close">&times;</button></div><div class="p-6"><form id="owner-details-form"><div class="mb-4"><label for="shop-name" class="block text-sm font-medium text-gray-700 mb-1">Shop Name</label><input type="text" id="shop-name" name="shopName" class="w-full p-2 border border-gray-300 rounded-md" required></div><div class="mb-4"><label for="owner-name" class="block text-sm font-medium text-gray-700 mb-1">Your Name</label><input type="text" id="owner-name" name="ownerName" class="w-full p-2 border border-gray-300 rounded-md" required></div><div class="mb-4"><label for="shop-address" class="block text-sm font-medium text-gray-700 mb-1">Shop Address</label><textarea id="shop-address" name="shopAddress" rows="3" class="w-full p-2 border border-gray-300 rounded-md" required></textarea></div></form></div><div class="p-4 bg-gray-50 border-t flex justify-end"><button id="send-whatsapp-button" class="bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 transition">Confirm & Send Order</button></div></div>
     </div>
     <div id="toast" class="fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-md opacity-0 transition-opacity duration-300 z-50">Item(s) added to cart!</div>
+    
+    <!-- Updated Image Viewer Modal -->
     <div id="image-viewer-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-        <div class="relative max-w-4xl max-h-full"><button id="close-image-viewer" class="absolute -top-3 -right-3 text-white bg-black bg-opacity-50 rounded-full h-8 w-8 flex items-center justify-center text-2xl z-10" aria-label="Close">&times;</button><img id="full-view-image" src="" alt="Full view" class="max-w-full max-h-screen object-contain rounded-lg"></div>
-    </div>
-    <!-- Custom Alert Modal -->
-    <div id="alert-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-sm mx-auto">
-            <div class="p-4 border-b"><h2 id="alert-title" class="text-xl font-semibold">Notice</h2></div>
-            <div id="alert-message" class="p-6"></div>
-            <div class="p-4 bg-gray-50 border-t flex justify-end">
-                <button id="alert-ok-btn" class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 transition">OK</button>
-            </div>
-        </div>
-    </div>
-    <!-- Confirmation Modal -->
-    <div id="confirm-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-sm mx-auto">
-            <div class="p-4 border-b"><h2 id="confirm-title" class="text-xl font-semibold">Confirmation</h2></div>
-            <div id="confirm-message" class="p-6"></div>
-            <div class="p-4 bg-gray-50 border-t flex justify-end space-x-2">
-                <button id="confirm-cancel-btn" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
-                <button id="confirm-ok-btn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">Confirm</button>
-            </div>
+        <div class="relative max-w-4xl w-full max-h-full flex items-center justify-center">
+            <button id="close-image-viewer" class="absolute -top-2 -right-2 text-white bg-black bg-opacity-50 rounded-full h-8 w-8 flex items-center justify-center text-2xl z-20" aria-label="Close">&times;</button>
+            <button id="viewer-prev-btn" class="image-nav-btn left-2 lg:-left-12 z-10" style="opacity:1;">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+            </button>
+            <img id="full-view-image" src="" alt="Full view" class="max-w-full max-h-screen object-contain rounded-lg">
+            <button id="viewer-next-btn" class="image-nav-btn right-2 lg:-right-12 z-10" style="opacity:1;">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+            </button>
         </div>
     </div>
 
+    <!-- Custom Alert & Confirm Modals -->
+    <div id="alert-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"><div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-sm mx-auto"><div class="p-4 border-b"><h2 id="alert-title" class="text-xl font-semibold">Notice</h2></div><div id="alert-message" class="p-6"></div><div class="p-4 bg-gray-50 border-t flex justify-end"><button id="alert-ok-btn" class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 transition">OK</button></div></div></div>
+    <div id="confirm-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"><div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-sm mx-auto"><div class="p-4 border-b"><h2 id="confirm-title" class="text-xl font-semibold">Confirmation</h2></div><div id="confirm-message" class="p-6"></div><div class="p-4 bg-gray-50 border-t flex justify-end space-x-2"><button id="confirm-cancel-btn" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button><button id="confirm-ok-btn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">Confirm</button></div></div></div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
     <script>
         const firebaseConfig = {
-  apiKey: "AIzaSyAuO5iyXCHYZS9nS2BViu-259sb2CUSZjo",
-  authDomain: "tshirt-catalog-v2.firebaseapp.com",
-  projectId: "tshirt-catalog-v2",
-  storageBucket: "tshirt-catalog-v2.firebasestorage.app",
-  messagingSenderId: "428518895959",
-  appId: "1:428518895959:web:8e1fccd4d6f1e2c8b00e12"
-};
+          apiKey: "AIzaSyAuO5iyXCHYZS9nS2BViu-259sb2CUSZjo",
+          authDomain: "tshirt-catalog-v2.firebaseapp.com",
+          projectId: "tshirt-catalog-v2",
+          storageBucket: "tshirt-catalog-v2.firebasestorage.app",
+          messagingSenderId: "428518895959",
+          appId: "1:428518895959:web:8e1fccd4d6f1e2c8b00e12"
+        };
 
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
@@ -104,6 +104,7 @@
             let cart = {}; 
             let toastTimer;
             let confirmCallback = null;
+            let viewerState = { images: [], currentIndex: 0 };
 
             function loadCart() { const savedCart = localStorage.getItem('tshirtCart'); if (savedCart) cart = JSON.parse(savedCart); }
             function saveCart() { localStorage.setItem('tshirtCart', JSON.stringify(cart)); }
@@ -117,6 +118,9 @@
             const confirmModal = document.getElementById('confirm-modal');
             const fullViewImage = document.getElementById('full-view-image');
             const closeImageViewerBtn = document.getElementById('close-image-viewer');
+            const viewerPrevBtn = document.getElementById('viewer-prev-btn');
+            const viewerNextBtn = document.getElementById('viewer-next-btn');
+
             const viewCartButton = document.getElementById('view-cart-button');
             const checkoutButton = document.getElementById('checkout-button');
             const sendWhatsappButton = document.getElementById('send-whatsapp-button');
@@ -197,9 +201,22 @@
                     const variantSection = hasVariants ? createCollapsibleCheckboxList('Category', product.variants, 'variant', true) : '<p class="text-sm text-gray-500 p-2">Not Available</p>';
                     const sizeSection = createCollapsibleCheckboxList('Size', product.sizes, 'size');
                     const colorSection = createCollapsibleCheckboxList('Color', product.colors, 'color');
+                    
+                    const mainImage = product.imageUrls && product.imageUrls.length > 0 ? product.imageUrls[0] : 'https://placehold.co/400x500/cccccc/ffffff?text=Image+Not+Found';
+                    const hasMultipleImages = product.imageUrls && product.imageUrls.length > 1;
 
                     card.innerHTML = `
-                        <img src="${product.imageUrl}" alt="${product.name}" loading="lazy" class="product-image-clickable w-full h-64 object-cover cursor-pointer" onerror="this.onerror=null;this.src='https://placehold.co/400x500/cccccc/ffffff?text=Image+Not+Found';">
+                        <div class="relative">
+                           <img src="${mainImage}" alt="${product.name}" loading="lazy" class="product-image w-full h-64 object-cover cursor-pointer" onerror="this.onerror=null;this.src='https://placehold.co/400x500/cccccc/ffffff?text=Image+Not+Found';">
+                           ${hasMultipleImages ? `
+                           <button class="image-nav-btn card-prev-btn left-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+                           </button>
+                           <button class="image-nav-btn card-next-btn right-2">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                           </button>
+                           ` : ''}
+                        </div>
                         <div class="p-4 flex flex-col flex-grow">
                             <h3 class="text-lg font-semibold mb-2">${product.name}</h3>
                             <div class="space-y-1 mt-auto pt-2">
@@ -264,11 +281,38 @@
             }
 
             productGrid.addEventListener('click', (e) => {
-                if (e.target.classList.contains('add-to-cart-btn')) {
-                    const card = e.target.closest('[data-product-id]');
+                const card = e.target.closest('[data-product-id]');
+                if (!card) return;
+                const productId = card.dataset.productId;
+                const product = products.find(p => p.id === productId);
+
+                if (e.target.closest('.card-prev-btn') || e.target.closest('.card-next-btn')) {
+                    const isNext = e.target.closest('.card-next-btn');
+                    const img = card.querySelector('.product-image');
+                    const urls = product.imageUrls;
+                    let currentIndex = urls.indexOf(img.src);
+                    
+                    if (isNext) {
+                        currentIndex = (currentIndex + 1) % urls.length;
+                    } else {
+                        currentIndex = (currentIndex - 1 + urls.length) % urls.length;
+                    }
+                    img.src = urls[currentIndex];
+                }
+                
+                else if (e.target.classList.contains('product-image')) {
+                    if (product.imageUrls && product.imageUrls.length > 0) {
+                        viewerState.images = product.imageUrls;
+                        const currentSrc = e.target.src;
+                        viewerState.currentIndex = product.imageUrls.indexOf(currentSrc);
+                        if (viewerState.currentIndex === -1) viewerState.currentIndex = 0;
+                        updateImageViewer();
+                        toggleModal(imageViewerModal, true);
+                    }
+                }
+
+                else if (e.target.classList.contains('add-to-cart-btn')) {
                     const cardBody = e.target.closest('.p-4');
-                    const productId = card.dataset.productId;
-                    const product = products.find(p => p.id === productId);
                     const stockInfo = product.stockInfo || {};
 
                     const quantityInput = cardBody.querySelector('.quantity-input');
@@ -280,17 +324,10 @@
                     const selectedSizes = getSelected('size');
                     const selectedColors = getSelected('color');
 
-                    if (isNaN(quantity) || quantity < 1) {
-                        showAlert("Invalid Quantity", "Please enter a valid quantity.");
-                        return;
-                    }
-                    if (selectedVariants.length === 0 || selectedSizes.length === 0 || selectedColors.length === 0) {
-                        showAlert("Selection Missing", "Please select at least one option from each category (Category, Size, and Color).");
-                        return;
-                    }
+                    if (isNaN(quantity) || quantity < 1) { showAlert("Invalid Quantity", "Please enter a valid quantity."); return; }
+                    if (selectedVariants.length === 0 || selectedSizes.length === 0 || selectedColors.length === 0) { showAlert("Selection Missing", "Please select at least one option from each category (Category, Size, and Color)."); return; }
 
-                    let itemsAdded = 0;
-                    let unavailableItems = [];
+                    let itemsAdded = 0; let unavailableItems = [];
 
                     selectedVariants.forEach(variant => {
                         selectedSizes.forEach(size => {
@@ -311,20 +348,8 @@
                         });
                     });
 
-                    if (itemsAdded > 0) {
-                        updateCart();
-                        showToast();
-                        updateStockDisplay(card);
-                    }
-
-                    if (unavailableItems.length > 0) {
-                        showAlert("Some Items Unavailable", "The following items have insufficient stock and were not added to your cart:<br><br><div class='text-left text-sm'>" + unavailableItems.join('<br>') + "</div>");
-                    }
-                }
-                
-                if (e.target.classList.contains('product-image-clickable')) {
-                    fullViewImage.src = e.target.src;
-                    toggleModal(imageViewerModal, true);
+                    if (itemsAdded > 0) { updateCart(); showToast(); updateStockDisplay(card); }
+                    if (unavailableItems.length > 0) { showAlert("Some Items Unavailable", "The following items have insufficient stock:<br><br><div class='text-left text-sm'>" + unavailableItems.join('<br>') + "</div>"); }
                 }
 
                 const toggle = e.target.closest('.collapsible-toggle');
@@ -365,6 +390,23 @@
                         updateStockDisplay(card);
                     }
                 } 
+            });
+
+            function updateImageViewer() {
+                if (viewerState.images.length > 0) {
+                    fullViewImage.src = viewerState.images[viewerState.currentIndex];
+                }
+                viewerPrevBtn.style.display = viewerState.images.length > 1 ? 'flex' : 'none';
+                viewerNextBtn.style.display = viewerState.images.length > 1 ? 'flex' : 'none';
+            }
+
+            viewerPrevBtn.addEventListener('click', () => {
+                viewerState.currentIndex = (viewerState.currentIndex - 1 + viewerState.images.length) % viewerState.images.length;
+                updateImageViewer();
+            });
+            viewerNextBtn.addEventListener('click', () => {
+                viewerState.currentIndex = (viewerState.currentIndex + 1) % viewerState.images.length;
+                updateImageViewer();
             });
 
             viewCartButton.addEventListener('click', () => { updateCart(); toggleModal(cartModal, true); });
