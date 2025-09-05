@@ -46,7 +46,7 @@
             <p class="text-base sm:text-lg text-gray-600 mt-2">Select multiple options for easy bulk ordering.</p>
         </header>
 
-        <div id="product-grid" class="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+        <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
             <div id="loading" class="col-span-full flex justify-center items-center h-64"><div class="loader"></div></div>
         </div>
 
@@ -227,7 +227,7 @@
                     `;
                     productGrid.appendChild(card);
                     
-                    addSwipeListeners(card); // Add swipe functionality
+                    addSwipeListeners(card); // Add swipe functionality for product cards
                     const prevBtn = card.querySelector('.card-prev-btn');
                     const nextBtn = card.querySelector('.card-next-btn');
                     if (prevBtn && nextBtn) {
@@ -262,12 +262,10 @@
             function handleSwipe(card, imageContainer, startX, endX) {
                 const product = products.find(p => p.id === card.dataset.productId);
                 if (!product || !product.imageUrls || product.imageUrls.length < 2) return;
-                
                 let currentIndex = parseInt(imageContainer.dataset.imageIndex, 10);
                 if (endX < startX - 50) { currentIndex = (currentIndex + 1) % product.imageUrls.length; } 
                 else if (endX > startX + 50) { currentIndex = (currentIndex - 1 + product.imageUrls.length) % product.imageUrls.length; } 
                 else { return; }
-
                 const img = card.querySelector('.product-image');
                 img.src = product.imageUrls[currentIndex];
                 imageContainer.dataset.imageIndex = currentIndex;
@@ -365,6 +363,22 @@
                 viewerPrevBtn.style.display = viewerState.images.length > 1 ? 'flex' : 'none';
                 viewerNextBtn.style.display = viewerState.images.length > 1 ? 'flex' : 'none';
             }
+
+            // --- Full Screen Viewer Swipe Logic ---
+            let viewerTouchStartX = 0;
+            imageViewerModal.addEventListener('touchstart', e => { viewerTouchStartX = e.changedTouches[0].screenX; }, { passive: true });
+            imageViewerModal.addEventListener('touchend', e => {
+                let viewerTouchEndX = e.changedTouches[0].screenX;
+                if (viewerState.images.length < 2) return;
+                if (viewerTouchEndX < viewerTouchStartX - 50) { // Swiped left
+                    viewerState.currentIndex = (viewerState.currentIndex + 1) % viewerState.images.length;
+                    updateImageViewer();
+                } else if (viewerTouchEndX > viewerTouchStartX + 50) { // Swiped right
+                    viewerState.currentIndex = (viewerState.currentIndex - 1 + viewerState.images.length) % viewerState.images.length;
+                    updateImageViewer();
+                }
+            }, { passive: true });
+            
             viewerPrevBtn.addEventListener('click', () => { viewerState.currentIndex = (viewerState.currentIndex - 1 + viewerState.images.length) % viewerState.images.length; updateImageViewer(); });
             viewerNextBtn.addEventListener('click', () => { viewerState.currentIndex = (viewerState.currentIndex + 1) % viewerState.images.length; updateImageViewer(); });
 
