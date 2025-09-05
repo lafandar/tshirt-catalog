@@ -105,6 +105,19 @@
             let toastTimer;
             let confirmCallback = null;
             let viewerState = { images: [], currentIndex: 0 };
+            const preloadedUrls = new Set(); // To track preloaded images
+
+            // --- NEW: Image preloading function ---
+            function preloadImages(urls) {
+                if (!urls) return;
+                urls.forEach(url => {
+                    if (!preloadedUrls.has(url)) {
+                        const img = new Image();
+                        img.src = url;
+                        preloadedUrls.add(url);
+                    }
+                });
+            }
 
             function loadCart() { const savedCart = localStorage.getItem('tshirtCart'); if (savedCart) cart = JSON.parse(savedCart); }
             function saveCart() { localStorage.setItem('tshirtCart', JSON.stringify(cart)); }
@@ -280,6 +293,18 @@
                 }
             }
 
+            // --- NEW: Event listener for preloading on hover ---
+            productGrid.addEventListener('mouseover', (e) => {
+                const card = e.target.closest('[data-product-id]');
+                if (card) {
+                    const productId = card.dataset.productId;
+                    const product = products.find(p => p.id === productId);
+                    if (product) {
+                        preloadImages(product.imageUrls);
+                    }
+                }
+            });
+
             productGrid.addEventListener('click', (e) => {
                 const card = e.target.closest('[data-product-id]');
                 if (!card) return;
@@ -290,7 +315,8 @@
                     const isNext = e.target.closest('.card-next-btn');
                     const img = card.querySelector('.product-image');
                     const urls = product.imageUrls;
-                    let currentIndex = urls.indexOf(img.src);
+                    let currentIndex = urls.findIndex(url => img.src.includes(encodeURI(url.split('?')[0])));
+                    if(currentIndex === -1) currentIndex = 0;
                     
                     if (isNext) {
                         currentIndex = (currentIndex + 1) % urls.length;
@@ -302,9 +328,10 @@
                 
                 else if (e.target.classList.contains('product-image')) {
                     if (product.imageUrls && product.imageUrls.length > 0) {
+                        preloadImages(product.imageUrls); // Preload here as well for touch devices
                         viewerState.images = product.imageUrls;
                         const currentSrc = e.target.src;
-                        viewerState.currentIndex = product.imageUrls.indexOf(currentSrc);
+                        viewerState.currentIndex = product.imageUrls.findIndex(url => currentSrc.includes(encodeURI(url.split('?')[0])));
                         if (viewerState.currentIndex === -1) viewerState.currentIndex = 0;
                         updateImageViewer();
                         toggleModal(imageViewerModal, true);
@@ -435,3 +462,4 @@
     </script>
 </body>
 </html>
+
