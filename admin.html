@@ -3,13 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - LAFANDAR</title>
+    <title>Admin Panel - T-Shirt Catalog</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .modal { display: none; }
         .modal.is-open { display: flex; }
+        .list-item > div:last-child { border-bottom: none; }
+        .progress-bar { width: 100%; background-color: #e5e7eb; border-radius: 9999px; overflow: hidden; height: 0.75rem; }
+        .progress-bar-fill { height: 100%; background-color: #4f46e5; border-radius: 9999px; transition: width 0.2s ease-in-out; }
+        #stock-inputs-container::-webkit-scrollbar, #image-previews::-webkit-scrollbar { width: 6px; }
+        #stock-inputs-container::-webkit-scrollbar-track, #image-previews::-webkit-scrollbar-track { background: #f1f1f1; }
+        #stock-inputs-container::-webkit-scrollbar-thumb, #image-previews::-webkit-scrollbar-thumb { background: #a0aec0; border-radius: 10px; }
+        .image-preview-item { position: relative; }
+        .delete-image-btn { position: absolute; top: 4px; right: 4px; }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -19,493 +27,457 @@
         <div class="w-full max-w-md p-8 space-y-6 bg-white rounded-lg shadow-md">
             <h2 class="text-2xl font-bold text-center text-gray-900">Admin Login</h2>
             <form id="login-form">
-                <input id="email" type="email" placeholder="Email" required class="w-full px-3 py-2 mt-1 border rounded">
-                <input id="password" type="password" placeholder="Password" required class="w-full px-3 py-2 mt-2 border rounded">
+                <div class="space-y-4">
+                    <div>
+                        <label for="email" class="text-sm font-medium text-gray-700">Email address</label>
+                        <input id="email" name="email" type="email" autocomplete="email" required class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="password" class="text-sm font-medium text-gray-700">Password</label>
+                        <input id="password" name="password" type="password" autocomplete="current-password" required class="w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                </div>
                 <p id="login-error" class="text-sm text-red-500 mt-2" style="display: none;"></p>
-                <button type="submit" class="w-full mt-6 px-4 py-2 text-white bg-indigo-600 rounded hover:bg-indigo-700">Sign in</button>
+                <div class="mt-6">
+                    <button type="submit" class="w-full px-4 py-2 text-sm font-medium text-white bg-indigo-600 border border-transparent rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">Sign in</button>
+                </div>
             </form>
         </div>
     </div>
 
-    <!-- Admin Panel -->
-    <div id="admin-panel" class="hidden h-screen w-full lg:grid lg:grid-cols-[280px_1fr]">
-        <!-- Sidebar -->
-        <div class="hidden border-r bg-gray-100/40 lg:block dark:bg-gray-800/40">
-            <div class="flex h-full max-h-screen flex-col gap-2">
-                <div class="flex h-[60px] items-center border-b px-6">
-                    <a class="flex items-center gap-2 font-semibold" href="#">
-                        <span class="">LAFANDAR Admin</span>
-                    </a>
-                </div>
-                <div class="flex-1 overflow-auto py-2">
-                    <nav class="grid items-start px-4 text-sm font-medium">
-                        <a class="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-900 bg-gray-200 transition-all hover:text-gray-900" href="#" data-view="varieties">
-                            <span>Varieties</span>
-                        </a>
-                        <a class="flex items-center gap-3 rounded-lg px-3 py-2 text-gray-500 transition-all hover:text-gray-900" href="#" data-view="designs">
-                            <span>Designs</span>
-                        </a>
-                    </nav>
-                </div>
-                 <div class="mt-auto p-4 border-t">
-                    <button id="logout-btn" class="w-full bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">Logout</button>
-                </div>
+    <!-- Admin Panel View -->
+    <div id="admin-panel" class="container mx-auto p-4 sm:p-6 lg:p-8" style="display: none;">
+        <header class="flex flex-col sm:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-gray-900">Manage Designs</h1>
+                <p id="user-email" class="text-sm text-gray-500"></p>
             </div>
-        </div>
-        <!-- Main Content -->
-        <div class="flex flex-col h-screen bg-white">
-             <header class="flex h-14 lg:h-[60px] items-center gap-4 border-b bg-gray-100/40 px-6 dark:bg-gray-800/40">
-                 <p id="user-email" class="text-sm text-gray-500"></p>
-             </header>
-            <main class="flex-1 overflow-y-auto p-6">
-                <!-- Varieties View -->
-                <div id="varieties-view">
-                    <div class="flex justify-between items-center mb-6">
-                        <h1 class="text-2xl font-bold">Manage Varieties</h1>
-                        <button id="add-variety-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">Add New Variety</button>
+            <div>
+                <button id="manage-global-variants-btn" class="bg-gray-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-gray-600 transition mr-2">Manage Variants</button>
+                <button id="add-new-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700 transition">Add New Design</button>
+                <button id="logout-btn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600 transition">Logout</button>
+            </div>
+        </header>
+        <div id="product-list" class="bg-white rounded-lg shadow-md"></div>
+    </div>
+
+    <!-- Modals (Product, Global Variant) -->
+    <div id="product-modal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-4xl mx-auto">
+            <form id="product-form" class="p-6">
+                <h2 id="modal-title" class="text-2xl font-semibold mb-6">Add/Edit Design</h2>
+                <input type="hidden" id="product-id">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Left Column: Basic Info & Images -->
+                    <div>
+                        <div class="mb-4"><label for="product-name" class="block text-sm font-medium text-gray-700 mb-1">Design Name</label><input type="text" id="product-name" class="w-full p-2 border border-gray-300 rounded-md" required></div>
+                        
+                        <!-- NEW: Multiple Image Upload -->
+                        <div class="mb-4">
+                            <label for="product-image-files" class="block text-sm font-medium text-gray-700 mb-1">Product Images</label>
+                            <input type="file" id="product-image-files" multiple class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" accept="image/png, image/jpeg, image/webp">
+                            <p class="text-xs text-gray-500 mt-1">Add one or more images. The first image will be the main display.</p>
+                        </div>
+                        <div id="image-previews" class="grid grid-cols-3 gap-2 mt-2 bg-gray-50 p-2 rounded-lg max-h-48 overflow-y-auto">
+                            <!-- Image previews will be generated here -->
+                        </div>
+                        <div id="upload-progress-container" class="mt-4" style="display: none;"><div class="progress-bar"><div id="upload-progress-bar" class="progress-bar-fill" style="width: 0%;"></div></div></div>
+                        
+                        <div class="mt-4"><label for="product-sizes" class="block text-sm font-medium text-gray-700 mb-1">Available Sizes (comma-separated)</label><input type="text" id="product-sizes" placeholder="e.g. S, M, L, XL" class="w-full p-2 border border-gray-300 rounded-md" required></div>
+                        <div class="mb-4"><label for="product-colors" class="block text-sm font-medium text-gray-700 mb-1">Available Colors (comma-separated)</label><input type="text" id="product-colors" placeholder="e.g. Black, White, Navy" class="w-full p-2 border border-gray-300 rounded-md" required></div>
                     </div>
-                    <div id="variety-list" class="space-y-4"></div>
-                </div>
-                <!-- Designs View -->
-                <div id="designs-view" class="hidden">
-                    <div class="flex justify-between items-center mb-6">
-                        <h1 class="text-2xl font-bold">Manage Designs</h1>
-                        <button id="add-design-btn" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">Add New Design</button>
+                    <!-- Right Column: Variants & Stock -->
+                    <div>
+                        <div class="bg-gray-50 p-4 rounded-lg mb-4">
+                            <h3 class="text-lg font-semibold mb-2">1. Add Product Variants</h3>
+                            <div id="product-variant-list" class="mb-4 max-h-24 overflow-y-auto space-y-2"></div>
+                            <div class="flex gap-2 items-end border-t pt-3">
+                                <select id="global-variant-select" class="w-full p-2 border border-gray-300 rounded-md"></select>
+                                <button type="button" id="add-variant-btn" class="bg-indigo-500 text-white font-bold py-2 px-3 rounded-lg hover:bg-indigo-600 text-sm">Add</button>
+                            </div>
+                            <p id="variant-error" class="text-xs text-red-500 mt-1" style="display: none;">Please add at least one variant.</p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h3 class="text-lg font-semibold mb-2">2. Manage Stock</h3>
+                            <p class="text-xs text-gray-500 mb-3">Define sizes, colors, and variants first to see stock inputs.</p>
+                            <div id="stock-inputs-container" class="max-h-60 overflow-y-auto space-y-3 pr-2">
+                                <!-- Stock inputs will be generated here -->
+                            </div>
+                        </div>
                     </div>
-                    <div id="design-list" class="space-y-4"></div>
                 </div>
-            </main>
+                <div class="pt-6 border-t mt-6 flex justify-end space-x-2">
+                    <button type="button" class="cancel-btn bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button>
+                    <button type="submit" id="save-btn" class="bg-green-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-green-600">Save Design</button>
+                </div>
+            </form>
         </div>
     </div>
-
-    <!-- Modals -->
-    <div id="variety-modal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6 space-y-4">
-            <h2 id="variety-modal-title" class="text-xl font-semibold">Add New Variety</h2>
-            <input type="text" id="variety-name" placeholder="Variety Name (e.g. Hoodie 320gsm)" class="w-full p-2 border rounded" required>
-            <input type="number" id="variety-price" placeholder="Base Price (₹)" class="w-full p-2 border rounded" required>
-            <label class="block text-sm font-medium">Variety Image</label>
-            <input type="file" id="variety-image" class="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0" accept="image/*" required>
-            <div class="flex justify-end gap-2">
-                <button type="button" class="cancel-btn bg-gray-200 py-2 px-4 rounded">Cancel</button>
-                <button id="save-variety-btn" class="bg-green-500 text-white py-2 px-4 rounded">Save</button>
-            </div>
-        </div>
+    <div id="global-variant-modal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-auto"><div class="p-6"><h2 class="text-2xl font-semibold mb-4">Manage Global Variants</h2><div id="global-variant-list" class="mb-4 max-h-64 overflow-y-auto"></div><form id="global-variant-form" class="p-4 border-t"><h3 class="font-semibold mb-2">Add New Variant</h3><div class="flex gap-4"><input type="text" id="new-global-variant-name" placeholder="Variant Name (e.g. Hoodie)" class="w-full p-2 border border-gray-300 rounded-md" required><input type="number" id="new-global-variant-price" placeholder="Price (₹)" min="0" class="w-full p-2 border border-gray-300 rounded-md" required><button type="submit" class="bg-indigo-600 text-white font-bold py-2 px-4 rounded-lg hover:bg-indigo-700">Add</button></div></form></div><div class="p-4 bg-gray-50 border-t flex justify-end"><button type="button" class="cancel-btn bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Close</button></div></div>
     </div>
-    
-    <div id="design-modal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-md mx-auto p-6 space-y-4">
-            <h2 id="design-modal-title" class="text-xl font-semibold">Add New Design</h2>
-             <input type="hidden" id="design-id">
-            <input type="text" id="design-name" placeholder="Design Name" class="w-full p-2 border rounded" required>
-            <select id="design-variety" class="w-full p-2 border rounded" required></select>
-            <select id="design-color" class="w-full p-2 border rounded" required>
-                <option value="Black">Black</option>
-                <option value="White">White</option>
-                <option value="Sky">Sky</option>
-                <option value="Lavender">Lavender</option>
-            </select>
-            <label class="block text-sm font-medium">Design Image</label>
-            <input type="file" id="design-image" class="w-full text-sm file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0" accept="image/*">
-            <div class="flex justify-end gap-2">
-                <button type="button" class="cancel-btn bg-gray-200 py-2 px-4 rounded">Cancel</button>
-                <button id="save-design-btn" class="bg-green-500 text-white py-2 px-4 rounded">Save Design</button>
-            </div>
-        </div>
-    </div>
-    
-    <div id="stock-modal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4 z-50">
-         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg mx-auto p-6 space-y-4">
-             <h2 class="text-xl font-semibold">Manage Stock</h2>
-             <input type="text" id="stock-sizes" placeholder="Sizes, comma-separated (e.g. S, M, L)" class="w-full p-2 border rounded">
-             <div id="stock-inputs" class="space-y-2"></div>
-             <div class="flex justify-end gap-2">
-                <button type="button" class="cancel-btn bg-gray-200 py-2 px-4 rounded">Cancel</button>
-                <button id="save-stock-btn" class="bg-green-500 text-white py-2 px-4 rounded">Save Stock</button>
-            </div>
-         </div>
-    </div>
-    
-    <!-- Custom Alert & Confirm Modals -->
-    <div id="alert-modal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-auto p-6 text-center">
-            <p id="alert-message" class="mb-4"></p>
-            <button id="alert-ok-btn" class="bg-indigo-600 text-white py-2 px-6 rounded">OK</button>
-        </div>
-    </div>
-
-    <div id="confirm-modal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center p-4 z-50">
-        <div class="bg-white rounded-lg shadow-xl w-full max-w-sm mx-auto p-6 text-center">
-            <p id="confirm-message" class="mb-6"></p>
-            <div class="flex justify-center gap-4">
-                <button id="confirm-cancel-btn" class="bg-gray-200 py-2 px-4 rounded">Cancel</button>
-                <button id="confirm-ok-btn" class="bg-red-500 text-white py-2 px-4 rounded">Confirm</button>
-            </div>
-        </div>
-    </div>
-
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-storage.js"></script>
-    
+
     <script>
         const firebaseConfig = {
-            apiKey: "AIzaSyAuO5iyXCHYZS9nS2BViu-259sb2CUSZjo",
-            authDomain: "tshirt-catalog-v2.firebaseapp.com",
-            projectId: "tshirt-catalog-v2",
-            storageBucket: "tshirt-catalog-v2.appspot.com",
-            messagingSenderId: "428518895959",
-            appId: "1:428518895959:web:8e1fccd4d6f1e2c8b00e12"
+          apiKey: "AIzaSyAuO5iyXCHYZS9nS2BViu-259sb2CUSZjo",
+          authDomain: "tshirt-catalog-v2.firebaseapp.com",
+          projectId: "tshirt-catalog-v2",
+          storageBucket: "tshirt-catalog-v2.firebasestorage.app",
+          messagingSenderId: "428518895959",
+          appId: "1:428518895959:web:8e1fccd4d6f1e2c8b00e12"
         };
 
         firebase.initializeApp(firebaseConfig);
         const auth = firebase.auth();
         const db = firebase.firestore();
         const storage = firebase.storage();
+        const productsCollection = db.collection('products');
+        const globalVariantsRef = db.collection('settings').doc('globalVariants');
+
+        let globalVariants = {};
+        let currentProductVariants = {};
+        let currentProductStock = {};
+        let existingImageUrls = [];
 
         document.addEventListener('DOMContentLoaded', () => {
-            // --- AUTHENTICATION ---
             const loginView = document.getElementById('login-view');
             const adminPanel = document.getElementById('admin-panel');
             const loginForm = document.getElementById('login-form');
+            const loginError = document.getElementById('login-error');
+            const logoutBtn = document.getElementById('logout-btn');
+            const userEmailEl = document.getElementById('user-email');
+            
             auth.onAuthStateChanged(user => {
                 if (user) {
                     loginView.style.display = 'none';
-                    adminPanel.style.display = 'grid';
-                    document.getElementById('user-email').textContent = `Logged in as: ${user.email}`;
-                    initAdminPanel();
+                    adminPanel.style.display = 'block';
+                    userEmailEl.textContent = `Logged in as: ${user.email}`;
+                    initializeAdminPanel();
                 } else {
                     loginView.style.display = 'flex';
                     adminPanel.style.display = 'none';
                 }
             });
+
             loginForm.addEventListener('submit', (e) => {
                 e.preventDefault();
                 auth.signInWithEmailAndPassword(loginForm.email.value, loginForm.password.value)
-                    .catch(error => document.getElementById('login-error').textContent = error.message);
-            });
-            document.getElementById('logout-btn').addEventListener('click', () => auth.signOut());
-
-            // --- CUSTOM MODAL LOGIC ---
-            const alertModal = document.getElementById('alert-modal');
-            const confirmModal = document.getElementById('confirm-modal');
-            let confirmCallback = null;
-            
-            function showAlert(message) {
-                document.getElementById('alert-message').textContent = message;
-                alertModal.style.display = 'flex';
-            }
-            
-            function showConfirm(message, onConfirm) {
-                document.getElementById('confirm-message').textContent = message;
-                confirmCallback = onConfirm;
-                confirmModal.style.display = 'flex';
-            }
-
-            document.getElementById('alert-ok-btn').addEventListener('click', () => alertModal.style.display = 'none');
-            document.getElementById('confirm-cancel-btn').addEventListener('click', () => confirmModal.style.display = 'none');
-            document.getElementById('confirm-ok-btn').addEventListener('click', () => {
-                if (confirmCallback) confirmCallback();
-                confirmModal.style.display = 'none';
+                    .catch(error => {
+                        loginError.textContent = error.message;
+                        loginError.style.display = 'block';
+                    });
             });
 
-            // --- MODAL & VIEW HANDLING ---
-            const modals = document.querySelectorAll('.modal');
-            const cancelButtons = document.querySelectorAll('.cancel-btn');
-            const navLinks = document.querySelectorAll('nav a');
-            const views = {
-                varieties: document.getElementById('varieties-view'),
-                designs: document.getElementById('designs-view')
-            };
+            logoutBtn.addEventListener('click', () => { auth.signOut(); });
 
-            function toggleModal(modalId, show) {
-                const modal = document.getElementById(modalId);
-                if (modal) modal.style.display = show ? 'flex' : 'none';
-            }
-
-            cancelButtons.forEach(btn => btn.addEventListener('click', () => modals.forEach(m => m.style.display = 'none')));
-            navLinks.forEach(link => {
-                link.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    const viewName = e.currentTarget.dataset.view;
-                    Object.values(views).forEach(v => v.style.display = 'none');
-                    navLinks.forEach(l => l.classList.remove('bg-gray-200', 'text-gray-900'));
-                    views[viewName].style.display = 'block';
-                    e.currentTarget.classList.add('bg-gray-200', 'text-gray-900');
-                });
-            });
-
-            // --- MAIN ADMIN LOGIC ---
-            function initAdminPanel() {
-                let currentVarieties = {};
-                let currentDesignId = null;
-                let currentStockDesignId = null;
-
-                const varietyList = document.getElementById('variety-list');
-                const designList = document.getElementById('design-list');
-
-                // --- VARIETY MANAGEMENT ---
-                const varietyModal = {
-                    title: document.getElementById('variety-modal-title'),
-                    name: document.getElementById('variety-name'),
-                    price: document.getElementById('variety-price'),
-                    image: document.getElementById('variety-image'),
-                    saveBtn: document.getElementById('save-variety-btn'),
-                };
-
-                document.getElementById('add-variety-btn').addEventListener('click', () => {
-                    varietyModal.title.textContent = 'Add New Variety';
-                    varietyModal.name.value = '';
-                    varietyModal.price.value = '';
-                    varietyModal.image.value = '';
-                    varietyModal.name.disabled = false;
-                    toggleModal('variety-modal', true);
-                });
-
-                varietyModal.saveBtn.addEventListener('click', async () => {
-                    const name = varietyModal.name.value.trim();
-                    const price = parseFloat(varietyModal.price.value);
-                    const imageFile = varietyModal.image.files[0];
-                    const isEditing = varietyModal.name.disabled;
-
-                    if (!name || isNaN(price)) {
-                        return showAlert('Please provide a valid name and price.');
-                    }
-
-                    if (!isEditing && !imageFile) {
-                        return showAlert('An image is required for a new variety.');
-                    }
-                    
-                    varietyModal.saveBtn.disabled = true;
-                    varietyModal.saveBtn.textContent = 'Saving...';
-
+            function initializeAdminPanel() {
+                const productList = document.getElementById('product-list');
+                const productModal = document.getElementById('product-modal');
+                const globalVariantModal = document.getElementById('global-variant-modal');
+                const productForm = document.getElementById('product-form');
+                const globalVariantForm = document.getElementById('global-variant-form');
+                const manageGlobalVariantsBtn = document.getElementById('manage-global-variants-btn');
+                const addNewBtn = document.getElementById('add-new-btn');
+                const globalVariantSelect = document.getElementById('global-variant-select');
+                const globalVariantListDiv = document.getElementById('global-variant-list');
+                const saveBtn = document.getElementById('save-btn');
+                const productVariantListDiv = document.getElementById('product-variant-list');
+                const addVariantBtn = document.getElementById('add-variant-btn');
+                const stockInputsContainer = document.getElementById('stock-inputs-container');
+                const productSizesInput = document.getElementById('product-sizes');
+                const productColorsInput = document.getElementById('product-colors');
+                const imageFilesInput = document.getElementById('product-image-files');
+                const imagePreviewsContainer = document.getElementById('image-previews');
+                
+                async function loadGlobalVariants() {
                     try {
-                        let imageUrl;
-                        if (imageFile) {
-                            const storageRef = storage.ref(`variety_images/${Date.now()}-${imageFile.name}`);
-                            const snapshot = await storageRef.put(imageFile);
-                            imageUrl = await snapshot.ref.getDownloadURL();
-                        } else if (isEditing) {
-                            imageUrl = currentVarieties[name].imageUrl;
-                        }
-
-                        const varietyData = { price, imageUrl };
-                        currentVarieties[name] = varietyData;
-
-                        await db.collection('settings').doc('globalVariants').set({ variants: currentVarieties });
-
-                        toggleModal('variety-modal', false);
-                        loadVarieties();
-                    } catch (error) {
-                        console.error("Error saving variety: ", error);
-                        showAlert("Could not save the variety. Please try again.");
-                    } finally {
-                        varietyModal.saveBtn.disabled = false;
-                        varietyModal.saveBtn.textContent = 'Save';
-                    }
-                });
-
-                async function loadVarieties() {
-                    const doc = await db.collection('settings').doc('globalVariants').get();
-                    currentVarieties = (doc.exists && doc.data().variants) ? doc.data().variants : {};
-                    
-                    varietyList.innerHTML = '';
-                    Object.keys(currentVarieties).forEach(name => {
-                        const v = currentVarieties[name];
-                        const item = document.createElement('div');
-                        item.className = 'flex items-center justify-between p-4 bg-white rounded-lg shadow';
-                        item.innerHTML = `
-                            <div class="flex items-center gap-4">
-                                <img src="${v.imageUrl}" class="w-12 h-12 rounded-md object-cover">
-                                <div>
-                                    <p class="font-semibold">${name}</p>
-                                    <p class="text-sm text-gray-600">₹${v.price}</p>
-                                </div>
-                            </div>
-                            <div>
-                                <button class="edit-variety-btn text-blue-500 mr-2" data-name="${name}">Edit</button>
-                                <button class="delete-variety-btn text-red-500" data-name="${name}">Delete</button>
-                            </div>`;
-                        varietyList.appendChild(item);
-                    });
-                    populateVarietyDropdown();
+                        const doc = await globalVariantsRef.get();
+                        if (doc.exists && doc.data().variants) { globalVariants = doc.data().variants; } 
+                        else { globalVariants = { "Oversize Tee": 599, "Hoodie": 899 }; await globalVariantsRef.set({ variants: globalVariants }); }
+                        updateGlobalVariantUI();
+                    } catch (error) { console.error("Error loading global variants:", error); }
                 }
-                
-                varietyList.addEventListener('click', e => {
-                    const name = e.target.dataset.name;
-                    if (e.target.classList.contains('edit-variety-btn')) {
-                        const v = currentVarieties[name];
-                        varietyModal.title.textContent = `Edit ${name}`;
-                        varietyModal.name.value = name;
-                        varietyModal.price.value = v.price;
-                        varietyModal.name.disabled = true;
-                        toggleModal('variety-modal', true);
-                    }
-                    if (e.target.classList.contains('delete-variety-btn')) {
-                        showConfirm(`Delete variety "${name}"? This cannot be undone.`, () => {
-                            delete currentVarieties[name];
-                            db.collection('settings').doc('globalVariants').set({ variants: currentVarieties }).then(loadVarieties);
-                        });
-                    }
-                });
 
-                // --- DESIGN MANAGEMENT ---
-                const designModal = {
-                    id: document.getElementById('design-id'),
-                    name: document.getElementById('design-name'),
-                    variety: document.getElementById('design-variety'),
-                    color: document.getElementById('design-color'),
-                    image: document.getElementById('design-image'),
-                    saveBtn: document.getElementById('save-design-btn'),
-                    title: document.getElementById('design-modal-title'),
-                };
-
-                function populateVarietyDropdown() {
-                    designModal.variety.innerHTML = '<option value="">Select Variety</option>';
-                    Object.keys(currentVarieties).forEach(name => {
+                function updateGlobalVariantUI() {
+                    globalVariantSelect.innerHTML = ''; globalVariantListDiv.innerHTML = '';
+                    for (const name in globalVariants) {
+                        const price = globalVariants[name];
                         const option = document.createElement('option');
-                        option.value = name;
-                        option.textContent = name;
-                        designModal.variety.appendChild(option);
-                    });
+                        option.value = name; option.textContent = `${name} - ₹${price}`;
+                        globalVariantSelect.appendChild(option);
+                        const itemEl = document.createElement('div');
+                        itemEl.className = 'list-item flex items-center justify-between p-2 border-b';
+                        itemEl.innerHTML = `<span>${name} - ₹${price}</span><button class="delete-global-variant-btn bg-red-500 text-white text-xs font-bold py-1 px-2 rounded hover:bg-red-600" data-name="${name}">Delete</button>`;
+                        globalVariantListDiv.appendChild(itemEl);
+                    }
                 }
                 
-                document.getElementById('add-design-btn').addEventListener('click', () => {
-                    currentDesignId = null;
-                    designModal.title.textContent = 'Add New Design';
-                    designModal.id.value = '';
-                    designModal.name.value = '';
-                    designModal.variety.value = '';
-                    designModal.color.value = 'Black';
-                    designModal.image.value = '';
-                    toggleModal('design-modal', true);
-                });
-
-                designModal.saveBtn.addEventListener('click', async () => {
-                    const data = {
-                        name: designModal.name.value.trim(),
-                        variety: designModal.variety.value,
-                        color: designModal.color.value,
-                    };
-                    const imageFile = designModal.image.files[0];
-
-                    if(!data.name || !data.variety || !data.color) return showAlert('Please fill all fields');
-                    
-                    if (imageFile) {
-                        const storageRef = storage.ref(`design_images/${Date.now()}-${imageFile.name}`);
-                        const snapshot = await storageRef.put(imageFile);
-                        data.imageUrl = await snapshot.ref.getDownloadURL();
+                function renderCurrentProductVariants() {
+                    productVariantListDiv.innerHTML = '';
+                    if (Object.keys(currentProductVariants).length === 0) { productVariantListDiv.innerHTML = '<p class="text-sm text-gray-500 text-center">No variants added yet.</p>'; }
+                    for (const name in currentProductVariants) {
+                        const price = currentProductVariants[name];
+                        const itemEl = document.createElement('div');
+                        itemEl.className = 'flex items-center justify-between bg-white p-2 rounded';
+                        itemEl.innerHTML = `<p class="text-sm font-medium">${name} - ₹${price}</p><button type="button" class="delete-variant-btn text-red-500 hover:text-red-700 text-xs font-bold" data-name="${name}">Remove</button>`;
+                        productVariantListDiv.appendChild(itemEl);
                     }
-
-                    if (currentDesignId) {
-                        await db.collection('designs').doc(currentDesignId).update(data);
-                    } else {
-                        if(!data.imageUrl) return showAlert('Image is required for a new design.');
-                        await db.collection('designs').add(data);
-                    }
-                    toggleModal('design-modal', false);
-                    loadDesigns();
-                });
-
-                async function loadDesigns() {
-                    const snapshot = await db.collection('designs').orderBy('name').get();
-                    designList.innerHTML = '';
-                    snapshot.forEach(doc => {
-                        const d = { id: doc.id, ...doc.data() };
-                        const item = document.createElement('div');
-                        item.className = 'flex items-center justify-between p-4 bg-white rounded-lg shadow';
-                        item.innerHTML = `
-                            <div class="flex items-center gap-4">
-                                <img src="${d.imageUrl}" class="w-12 h-12 rounded-md object-cover">
-                                <div>
-                                    <p class="font-semibold">${d.name}</p>
-                                    <p class="text-sm text-gray-600">${d.variety} - ${d.color}</p>
-                                </div>
-                            </div>
-                            <div>
-                                <button class="stock-btn bg-gray-200 text-sm py-1 px-3 rounded mr-2" data-id="${d.id}">Manage Stock</button>
-                                <button class="edit-design-btn text-blue-500 mr-2" data-id="${d.id}">Edit</button>
-                                <button class="delete-design-btn text-red-500" data-id="${d.id}">Delete</button>
-                            </div>`;
-                        designList.appendChild(item);
-                    });
+                    generateStockInputs();
                 }
-                
-                designList.addEventListener('click', async e => {
-                    const id = e.target.dataset.id;
-                    if (e.target.classList.contains('delete-design-btn')) {
-                        showConfirm('Delete this design?', async () => {
-                            await db.collection('designs').doc(id).delete();
-                            loadDesigns();
+
+                function generateStockInputs() {
+                    stockInputsContainer.innerHTML = '';
+                    const sizes = productSizesInput.value.split(',').map(s => s.trim()).filter(Boolean);
+                    const colors = productColorsInput.value.split(',').map(c => c.trim()).filter(Boolean);
+                    const variants = Object.keys(currentProductVariants);
+
+                    if (sizes.length === 0 || colors.length === 0 || variants.length === 0) {
+                        stockInputsContainer.innerHTML = '<p class="text-sm text-gray-500 text-center">Add variants, sizes, and colors to manage stock.</p>';
+                        return;
+                    }
+
+                    variants.forEach(variant => {
+                        const variantHeader = document.createElement('h4');
+                        variantHeader.className = 'font-semibold text-md text-gray-800';
+                        variantHeader.textContent = variant;
+                        stockInputsContainer.appendChild(variantHeader);
+
+                        sizes.forEach(size => {
+                            colors.forEach(color => {
+                                const stockKey = `${variant}_${size}_${color}`;
+                                const stockValue = currentProductStock[stockKey] || 0;
+
+                                const inputGroup = document.createElement('div');
+                                inputGroup.className = 'flex items-center justify-between gap-2';
+                                inputGroup.innerHTML = `
+                                    <label for="stock_${stockKey}" class="text-sm text-gray-600">${size} / ${color}</label>
+                                    <input type="number" id="stock_${stockKey}" data-stock-key="${stockKey}" value="${stockValue}" min="0" class="stock-input w-20 p-1 border border-gray-300 rounded-md text-center">
+                                `;
+                                stockInputsContainer.appendChild(inputGroup);
+                            });
                         });
-                    }
-                    if (e.target.classList.contains('edit-design-btn')) {
-                        currentDesignId = id;
-                        const doc = await db.collection('designs').doc(id).get();
-                        const d = doc.data();
-                        designModal.title.textContent = `Edit ${d.name}`;
-                        designModal.id.value = id;
-                        designModal.name.value = d.name;
-                        designModal.variety.value = d.variety;
-                        designModal.color.value = d.color;
-                        toggleModal('design-modal', true);
-                    }
-                    if (e.target.classList.contains('stock-btn')) {
-                        currentStockDesignId = id;
-                        const doc = await db.collection('designs').doc(id).get();
-                        const d = doc.data();
-                        document.getElementById('stock-sizes').value = d.sizes ? d.sizes.join(', ') : '';
-                        generateStockInputs(d.sizes || [], d.stock || {});
-                        toggleModal('stock-modal', true);
-                    }
-                });
-
-                // --- STOCK MANAGEMENT ---
-                const stockModal = {
-                    sizes: document.getElementById('stock-sizes'),
-                    inputs: document.getElementById('stock-inputs'),
-                    saveBtn: document.getElementById('save-stock-btn'),
-                };
-
-                function generateStockInputs(sizes = [], stock = {}) {
-                    stockModal.inputs.innerHTML = '';
-                    sizes.forEach(size => {
-                        const div = document.createElement('div');
-                        div.className = 'flex items-center justify-between';
-                        div.innerHTML = `
-                            <label class="text-sm">${size}</label>
-                            <input type="number" value="${stock[size] || 0}" class="w-24 p-1 border rounded text-center stock-input-field" data-size="${size}">
-                        `;
-                        stockModal.inputs.appendChild(div);
+                    });
+                }
+                
+                function renderImagePreviews() {
+                    imagePreviewsContainer.innerHTML = '';
+                    existingImageUrls.forEach((url, index) => {
+                         const previewEl = document.createElement('div');
+                         previewEl.className = 'image-preview-item';
+                         previewEl.innerHTML = `
+                            <img src="${url}" class="w-full h-24 object-cover rounded-md">
+                            <button type="button" class="delete-image-btn bg-red-500 text-white rounded-full p-1 leading-none" data-index="${index}">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                         `;
+                         imagePreviewsContainer.appendChild(previewEl);
                     });
                 }
 
-                stockModal.sizes.addEventListener('input', () => {
-                    const sizes = stockModal.sizes.value.split(',').map(s => s.trim()).filter(Boolean);
-                    const currentStock = {};
-                     document.querySelectorAll('.stock-input-field').forEach(inp => {
-                        currentStock[inp.dataset.size] = inp.value;
-                    });
-                    generateStockInputs(sizes, currentStock);
+                function openProductModal(product = null) {
+                    productForm.reset(); 
+                    document.getElementById('upload-progress-container').style.display = 'none'; 
+                    saveBtn.disabled = false; 
+                    currentProductVariants = {};
+                    currentProductStock = {};
+                    existingImageUrls = [];
+                    imagePreviewsContainer.innerHTML = '';
+
+
+                    if (product) {
+                        document.getElementById('modal-title').textContent = 'Edit Design';
+                        document.getElementById('product-id').value = product.id;
+                        document.getElementById('product-name').value = product.name;
+                        productSizesInput.value = product.sizes ? product.sizes.join(', ') : '';
+                        productColorsInput.value = product.colors ? product.colors.join(', ') : '';
+                        if (product.variants) currentProductVariants = product.variants;
+                        if (product.stockInfo) currentProductStock = product.stockInfo;
+                        if (product.imageUrls) {
+                            existingImageUrls = [...product.imageUrls];
+                            renderImagePreviews();
+                        }
+                    } else {
+                        document.getElementById('modal-title').textContent = 'Add New Design';
+                        document.getElementById('product-id').value = '';
+                    }
+                    renderCurrentProductVariants();
+                    productModal.classList.add('is-open');
+                }
+
+                function closeModal() { productModal.classList.remove('is-open'); globalVariantModal.classList.remove('is-open'); }
+                
+                function loadProducts() {
+                    productsCollection.orderBy("name").onSnapshot(snapshot => {
+                        productList.innerHTML = '';
+                        if (snapshot.empty) { productList.innerHTML = '<p class="text-center text-gray-500 p-8">No designs found.</p>'; return; }
+                        snapshot.forEach(doc => {
+                            const product = { id: doc.id, ...doc.data() };
+                            const mainImage = product.imageUrls && product.imageUrls.length > 0 ? product.imageUrls[0] : 'https://placehold.co/100x100/cccccc/ffffff?text=X';
+                            const productEl = document.createElement('div');
+                            productEl.className = 'flex items-center justify-between p-4 border-b';
+                            productEl.innerHTML = `<div class="flex items-center"><img src="${mainImage}" alt="${product.name}" class="w-16 h-16 object-cover rounded-md mr-4" onerror="this.onerror=null;this.src='https://placehold.co/100x100/cccccc/ffffff?text=X';"><div><p class="font-semibold text-lg">${product.name}</p><p class="text-sm text-gray-500">Variants: ${Object.keys(product.variants || {}).length}</p></div></div><div class="text-right"><div class="space-x-2 mt-2"><button class="edit-btn bg-blue-500 text-white text-sm font-bold py-1 px-3 rounded hover:bg-blue-600" data-id="${product.id}">Edit</button><button class="delete-btn bg-red-500 text-white text-sm font-bold py-1 px-3 rounded hover:bg-red-600" data-id="${product.id}" data-name="${product.name}">Delete</button></div></div>`;
+                            productList.appendChild(productEl);
+                        });
+                    }, error => console.error("Error loading products: ", error));
+                }
+
+                async function saveProduct(id, data) {
+                    try {
+                        if (id) { await productsCollection.doc(id).update(data); } 
+                        else { 
+                            if (!data.imageUrls || data.imageUrls.length === 0) {
+                                alert("Please select at least one image for the new design.");
+                                saveBtn.disabled = false;
+                                saveBtn.textContent = 'Save Design';
+                                return;
+                            }
+                            await productsCollection.add(data);
+                        }
+                        closeModal();
+                    } catch (error) { console.error("Error saving product: ", error); alert("Could not save the design."); } 
+                    finally { saveBtn.disabled = false; saveBtn.textContent = 'Save Design'; }
+                }
+                
+                // Event Listeners
+                addNewBtn.addEventListener('click', () => openProductModal());
+                document.querySelectorAll('.cancel-btn').forEach(btn => btn.addEventListener('click', closeModal));
+                manageGlobalVariantsBtn.addEventListener('click', () => globalVariantModal.classList.add('is-open'));
+                
+                [productSizesInput, productColorsInput].forEach(input => {
+                    input.addEventListener('input', generateStockInputs);
+                });
+                
+                addVariantBtn.addEventListener('click', () => { 
+                    const selectedVariantName = globalVariantSelect.value; 
+                    if (selectedVariantName && globalVariants[selectedVariantName]) { 
+                        currentProductVariants[selectedVariantName] = globalVariants[selectedVariantName]; 
+                        renderCurrentProductVariants(); 
+                    } 
+                });
+                
+                productVariantListDiv.addEventListener('click', (e) => { 
+                    if (e.target.classList.contains('delete-variant-btn')) { 
+                        delete currentProductVariants[e.target.dataset.name]; 
+                        renderCurrentProductVariants(); 
+                    } 
+                });
+                
+                imagePreviewsContainer.addEventListener('click', (e) => {
+                    const deleteBtn = e.target.closest('.delete-image-btn');
+                    if(deleteBtn) {
+                        const indexToRemove = parseInt(deleteBtn.dataset.index, 10);
+                        existingImageUrls.splice(indexToRemove, 1);
+                        renderImagePreviews();
+                    }
                 });
 
-                stockModal.saveBtn.addEventListener('click', async () => {
-                    if(!currentStockDesignId) return;
-                    const sizes = stockModal.sizes.value.split(',').map(s => s.trim()).filter(Boolean);
-                    const stock = {};
-                    document.querySelectorAll('.stock-input-field').forEach(inp => {
-                        stock[inp.dataset.size] = parseInt(inp.value) || 0;
-                    });
-                    await db.collection('designs').doc(currentStockDesignId).update({ sizes, stock });
-                    toggleModal('stock-modal', false);
+                imageFilesInput.addEventListener('change', (e) => {
+                    for (const file of e.target.files) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                             const previewEl = document.createElement('div');
+                             previewEl.className = 'image-preview-item border-2 border-indigo-400 rounded-md';
+                             previewEl.innerHTML = `<img src="${event.target.result}" class="w-full h-24 object-cover rounded-md opacity-75"><p class="text-xs text-center p-1">New</p>`;
+                             imagePreviewsContainer.appendChild(previewEl);
+                        }
+                        reader.readAsDataURL(file);
+                    }
                 });
 
-                loadVarieties().then(loadDesigns);
+                globalVariantForm.addEventListener('submit', async (e) => { e.preventDefault(); const name = document.getElementById('new-global-variant-name').value.trim(); const price = parseFloat(document.getElementById('new-global-variant-price').value); if (name && !isNaN(price)) { globalVariants[name] = price; await globalVariantsRef.set({ variants: globalVariants }); updateGlobalVariantUI(); globalVariantForm.reset(); } });
+                globalVariantListDiv.addEventListener('click', async (e) => { if (e.target.classList.contains('delete-global-variant-btn')) { const name = e.target.dataset.name; if (confirm(`Are you sure you want to delete the global variant "${name}"?`)) { delete globalVariants[name]; await globalVariantsRef.set({ variants: globalVariants }); updateGlobalVariantUI(); } } });
+                
+                productForm.addEventListener('submit', async (e) => { 
+                    e.preventDefault(); 
+                    if (Object.keys(currentProductVariants).length === 0) { 
+                        document.getElementById('variant-error').style.display = 'block'; 
+                        return; 
+                    } 
+                    document.getElementById('variant-error').style.display = 'none'; 
+                    saveBtn.disabled = true; 
+                    saveBtn.textContent = 'Saving...'; 
+                    
+                    const id = document.getElementById('product-id').value;
+                    const imageFiles = imageFilesInput.files;
+                    
+                    const newStockInfo = {};
+                    stockInputsContainer.querySelectorAll('.stock-input').forEach(input => {
+                        newStockInfo[input.dataset.stockKey] = parseInt(input.value, 10) || 0;
+                    });
+
+                    const productData = { 
+                        name: document.getElementById('product-name').value, 
+                        variants: currentProductVariants, 
+                        sizes: productSizesInput.value.split(',').map(s => s.trim()).filter(Boolean), 
+                        colors: productColorsInput.value.split(',').map(c => c.trim()).filter(Boolean),
+                        stockInfo: newStockInfo,
+                        imageUrls: existingImageUrls
+                    }; 
+
+                    if (imageFiles.length > 0) { 
+                        const uploadPromises = [];
+                        document.getElementById('upload-progress-container').style.display = 'block'; 
+                        let totalBytes = 0;
+                        let uploadedBytes = 0;
+                        Array.from(imageFiles).forEach(file => totalBytes += file.size);
+                        
+                        Array.from(imageFiles).forEach(file => {
+                            const storageRef = storage.ref(`products/${Date.now()}-${file.name}`); 
+                            const uploadTask = storageRef.put(file);
+                            
+                            const promise = new Promise((resolve, reject) => {
+                                uploadTask.on('state_changed', 
+                                    (snapshot) => { 
+                                      // This only tracks one file, a more complex solution is needed for aggregate progress
+                                    }, 
+                                    (error) => { console.error("Upload failed:", error); reject(error);}, 
+                                    async () => { 
+                                        const downloadURL = await uploadTask.snapshot.ref.getDownloadURL(); 
+                                        resolve(downloadURL);
+                                    }
+                                );
+                            });
+                            uploadPromises.push(promise);
+                        });
+
+                        try {
+                            const newImageUrls = await Promise.all(uploadPromises);
+                            productData.imageUrls = [...existingImageUrls, ...newImageUrls];
+                            await saveProduct(id, productData);
+                        } catch (error) {
+                             alert("One or more image uploads failed. Product not saved.");
+                             saveBtn.disabled = false; 
+                             saveBtn.textContent = 'Save Design';
+                        }
+                    } else { 
+                        await saveProduct(id, productData); 
+                    } 
+                });
+
+                productList.addEventListener('click', async (e) => { 
+                    const id = e.target.dataset.id; 
+                    if (e.target.classList.contains('delete-btn')) { 
+                        if (confirm(`Are you sure you want to delete "${e.target.dataset.name}"?`)) { 
+                            try { 
+                                // Note: This does not delete images from storage, which might be desired
+                                await productsCollection.doc(id).delete(); 
+                            } 
+                            catch (error) { console.error("Error deleting product: ", error); } 
+                        } 
+                    } else if (e.target.classList.contains('edit-btn')) { 
+                        const doc = await productsCollection.doc(id).get(); 
+                        if (doc.exists) { openProductModal({ id: doc.id, ...doc.data() }); } 
+                    } 
+                });
+                
+                loadGlobalVariants().then(loadProducts);
             }
         });
     </script>
 </body>
 </html>
-
