@@ -96,6 +96,16 @@
         .image-preloader {
             display: none;
         }
+        .stock-error-message {
+            max-height: 0;
+            opacity: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+        }
+        .stock-error-message.show {
+             max-height: 2rem; /* approx height */
+             opacity: 1;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -355,15 +365,18 @@
                     const isOutOfStock = remainingStock <= 0;
 
                     return `
-                        <div class="size-container grid grid-cols-3 items-center gap-2">
-                            <button class="size-btn border-2 border-gray-300 rounded-md py-2 font-semibold text-sm transition-colors text-center ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed line-through' : 'hover:bg-gray-200'}"
-                                    data-size="${size}" ${isOutOfStock ? 'disabled' : ''}>
-                                ${size}
-                            </button>
-                            <span class="stock-display text-xs text-center ${isOutOfStock ? 'text-red-500 font-semibold' : 'text-gray-500'}">
-                                ${isOutOfStock ? 'Out of Stock' : `${remainingStock} left`}
-                            </span>
-                            <input type="number" min="0" max="${remainingStock}" value="0" class="quantity-input border-gray-300 rounded-md text-center text-sm p-1" placeholder="0" ${isOutOfStock ? 'disabled' : ''}>
+                        <div>
+                            <div class="size-container grid grid-cols-3 items-center gap-2">
+                                <button class="size-btn border-2 border-gray-300 rounded-md py-2 font-semibold text-sm transition-colors text-center ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed line-through' : 'hover:bg-gray-200'}"
+                                        data-size="${size}" ${isOutOfStock ? 'disabled' : ''}>
+                                    ${size}
+                                </button>
+                                <span class="stock-display text-xs text-center ${isOutOfStock ? 'text-red-500 font-semibold' : 'text-gray-500'}">
+                                    ${isOutOfStock ? 'Out of Stock' : `${remainingStock} left`}
+                                </span>
+                                <input type="number" min="0" max="${remainingStock}" value="0" class="quantity-input border-gray-300 rounded-md text-center text-sm p-1" placeholder="0" ${isOutOfStock ? 'disabled' : ''}>
+                            </div>
+                            <p class="stock-error-message text-red-600 text-xs text-center mt-1"></p>
                         </div>
                     `;
                 }).join('');
@@ -467,15 +480,26 @@
             // --- EVENT LISTENERS ---
             productGrid.addEventListener('input', (e) => {
                 if (e.target.classList.contains('quantity-input')) {
-                    const value = parseInt(e.target.value, 10) || 0;
-                    const sizeContainer = e.target.closest('.size-container');
-                    if (sizeContainer) {
-                        const sizeBtn = sizeContainer.querySelector('.size-btn');
-                        if (value > 0) {
-                            sizeBtn.classList.add('selected');
-                        } else {
-                            sizeBtn.classList.remove('selected');
-                        }
+                    const input = e.target;
+                    const value = parseInt(input.value, 10) || 0;
+                    const max = parseInt(input.max, 10);
+                    const sizeContainer = input.closest('.size-container').parentElement;
+                    const errorEl = sizeContainer.querySelector('.stock-error-message');
+                    const sizeBtn = sizeContainer.querySelector('.size-btn');
+
+                    if (value > max) {
+                        input.classList.add('border-red-500', 'ring', 'ring-red-200');
+                        errorEl.textContent = `Only ${max} left!`;
+                        errorEl.classList.add('show');
+                    } else {
+                        input.classList.remove('border-red-500', 'ring', 'ring-red-200');
+                        errorEl.classList.remove('show');
+                    }
+                    
+                    if (value > 0) {
+                        sizeBtn.classList.add('selected');
+                    } else {
+                        sizeBtn.classList.remove('selected');
                     }
                 }
             });
@@ -577,10 +601,10 @@
                     selectedSizeNodes.forEach(sizeNode => {
                         if (stockError) return;
                         const size = sizeNode.dataset.size;
-                        const quantityInput = sizeNode.parentElement.querySelector('.quantity-input');
+                        const quantityInput = sizeNode.parentElement.parentElement.querySelector('.quantity-input');
                         const quantity = parseInt(quantityInput.value, 10) || 0;
                         
-                        if (quantity <= 0) return; // Skip items with 0 quantity
+                        if (quantity <= 0) return;
 
                         const availableStock = selectedColorData.stockBySize?.[size] || 0;
                         const itemInCart = cart.find(item => item.id.startsWith(`${productId}-${selectedColorName}-${size}`));
@@ -609,8 +633,6 @@
 
                     if (totalQuantityAdded > 0 && !stockError) {
                         showToast(`${totalQuantityAdded} item${totalQuantityAdded > 1 ? 's' : ''} added to cart!`);
-                        selectedSizeNodes.forEach(node => node.classList.remove('selected'));
-                        card.querySelector('.design-option.selected')?.classList.remove('selected');
                     }
                 }
             });
