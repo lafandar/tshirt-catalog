@@ -107,6 +107,7 @@
                 LAFANDAR CATALOGUE
             </h1>
             <div class="flex items-center gap-4">
+                 <span id="customer-name-display" class="hidden text-sm font-semibold text-gray-700"></span>
                  <button id="view-order-btn" class="hidden text-sm font-semibold text-gray-600 hover:text-blue-600">My Last Order</button>
                 <button id="cart-button" class="relative">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-600 hover:text-gray-900 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -162,6 +163,33 @@
         </div>
     </div>
     
+    <!-- Customer Details Modal -->
+    <div id="customer-details-modal" class="fixed inset-0 bg-black bg-opacity-60 z-[80] hidden items-center justify-center p-4">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">Your Information</h2>
+            <p class="text-sm text-gray-600 mb-6">Please provide your details. This will only be asked once.</p>
+            <form id="customer-form">
+                <div class="space-y-4">
+                    <div>
+                        <label for="customer-name" class="block text-sm font-medium text-gray-700">Full Name</label>
+                        <input type="text" id="customer-name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="shop-name" class="block text-sm font-medium text-gray-700">Shop Name</label>
+                        <input type="text" id="shop-name" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div>
+                        <label for="customer-address" class="block text-sm font-medium text-gray-700">Address</label>
+                        <textarea id="customer-address" rows="3" required class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"></textarea>
+                    </div>
+                </div>
+                <div class="mt-6">
+                    <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md font-semibold hover:bg-blue-700">Save & Continue</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Order Summary Modal -->
     <div id="order-summary-modal" class="fixed inset-0 bg-white z-[70] hidden overflow-y-auto p-4 sm:p-6">
         <div class="container mx-auto max-w-2xl">
@@ -172,6 +200,7 @@
                 </button>
             </div>
             <div class="bg-gray-50 rounded-lg p-6">
+                <div id="summary-customer-details" class="mb-6 border-b pb-4"></div>
                 <h3 class="text-xl font-semibold mb-4 border-b pb-3">Order Summary</h3>
                 <div id="summary-items-container" class="space-y-4 mb-6">
                     <!-- Summary items will be injected here -->
@@ -225,7 +254,8 @@
             // --- CONFIGURATION ---
             const whatsAppNumber = '918210746035'; // Your WhatsApp number
             const cartStorageKey = 'lafandar_cart';
-            const orderStorageKey = 'lafandar_last_order'; // New key for the persistent bill
+            const orderStorageKey = 'lafandar_last_order';
+            const customerDetailsKey = 'lafandar_customer_details';
             const firebaseConfig = {
                 apiKey: "AIzaSyAJsKAoQYNmVeAbAREpTRnpnvKyA9fauow",
                 authDomain: "lafandar-catalogue.firebaseapp.com",
@@ -272,6 +302,7 @@
             const gridLoader = document.getElementById('grid-loader');
             const cartButton = document.getElementById('cart-button');
             const viewOrderBtn = document.getElementById('view-order-btn');
+            const customerNameDisplay = document.getElementById('customer-name-display');
             const cartModal = document.getElementById('cart-modal');
             const cartPanel = document.getElementById('cart-panel');
             const closeCartBtn = document.getElementById('close-cart-btn');
@@ -286,12 +317,16 @@
             const designModalImage = document.getElementById('design-modal-image');
             const closeDesignBtn = document.getElementById('close-design-btn');
             const whatsappBtn = document.getElementById('whatsapp-btn');
+            const customerDetailsModal = document.getElementById('customer-details-modal');
+            const customerForm = document.getElementById('customer-form');
             const orderSummaryModal = document.getElementById('order-summary-modal');
             const closeSummaryBtn = document.getElementById('close-summary-btn');
             const confirmOrderBtn = document.getElementById('confirm-order-btn');
             const summaryItemsContainer = document.getElementById('summary-items-container');
             const summaryTotalItems = document.getElementById('summary-total-items');
             const summaryGrandTotal = document.getElementById('summary-grand-total');
+            const summaryCustomerDetails = document.getElementById('summary-customer-details');
+
 
             // --- FETCH & RENDER PRODUCTS FROM FIREBASE ---
             onSnapshot(collection(db, productsCollectionPath), (snapshot) => {
@@ -667,9 +702,103 @@
             closeCartBtn.addEventListener('click', closeCart);
             cartModal.addEventListener('click', (e) => e.target === cartModal && closeCart());
 
-            // --- ORDER SUMMARY & WHATSAPP LOGIC ---
+            // --- CUSTOMER DETAILS & ORDER LOGIC ---
+            const openCustomerDetailsModal = () => customerDetailsModal.classList.remove('hidden');
+            const closeCustomerDetailsModal = () => customerDetailsModal.classList.add('hidden');
+
+            const processOrder = async () => {
+                if (cart.length === 0) return;
+                
+                whatsappBtn.disabled = true;
+                whatsappBtn.innerHTML = `<span>Processing...</span>`;
+
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const productsInCart = {};
+                        cart.forEach(item => {
+                            if (!productsInCart[item.productId]) productsInCart[item.productId] = [];
+                            productsInCart[item.productId].push(item);
+                        });
+
+                        const productRefs = {}, productDocs = {};
+                        for (const productId in productsInCart) {
+                            const docRef = doc(db, productsCollectionPath, productId);
+                            productRefs[productId] = docRef;
+                            const productDoc = await transaction.get(docRef);
+                            if (!productDoc.exists()) throw new Error(`Product ${productId} not found!`);
+                            productDocs[productId] = productDoc.data();
+                        }
+
+                        for (const productId in productsInCart) {
+                            const items = productsInCart[productId];
+                            const productData = productDocs[productId];
+                            items.forEach(item => {
+                                const colorIndex = productData.colors.findIndex(c => c.name === item.color);
+                                if (colorIndex === -1) throw new Error(`Color ${item.color} not found.`);
+                                const currentStock = productData.colors[colorIndex].stockBySize[item.size];
+                                if (currentStock === undefined) throw new Error(`Size ${item.size} not found.`);
+                                const newStock = currentStock - item.quantity;
+                                if (newStock < 0) throw new Error(`Not enough stock for ${item.name} (${item.size}). Only ${currentStock} left.`);
+                                productData.colors[colorIndex].stockBySize[item.size] = newStock;
+                            });
+                            transaction.update(productRefs[productId], { colors: productData.colors });
+                        }
+                    });
+                    
+                    localStorage.setItem(orderStorageKey, JSON.stringify(cart));
+                    cart = [];
+                    updateCart();
+                    closeCart();
+                    setTimeout(openSummary, 300);
+                    showToast('Order placed successfully!');
+
+                } catch (e) {
+                    console.error("Order failed:", e);
+                    showToast(e.message || "Order failed. Stock may have changed.", true);
+                } finally {
+                    whatsappBtn.disabled = false;
+                    whatsappBtn.innerHTML = `<span>Review & Order</span>`;
+                }
+            };
+
+            whatsappBtn.addEventListener('click', async () => {
+                const savedCustomer = localStorage.getItem(customerDetailsKey);
+                if (!savedCustomer) {
+                    openCustomerDetailsModal();
+                } else {
+                    await processOrder();
+                }
+            });
+
+            customerForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const customerDetails = {
+                    name: document.getElementById('customer-name').value,
+                    shopName: document.getElementById('shop-name').value,
+                    address: document.getElementById('customer-address').value
+                };
+                localStorage.setItem(customerDetailsKey, JSON.stringify(customerDetails));
+                updateCustomerDisplay();
+                closeCustomerDetailsModal();
+                await processOrder();
+            });
+
+
             const renderOrderSummary = () => {
                 const lastOrder = JSON.parse(localStorage.getItem(orderStorageKey));
+                const customer = JSON.parse(localStorage.getItem(customerDetailsKey));
+
+                if (customer) {
+                    summaryCustomerDetails.innerHTML = `
+                        <h4 class="font-semibold text-lg mb-2">Customer Details</h4>
+                        <p class="text-gray-700"><span class="font-medium">Name:</span> ${customer.name}</p>
+                        <p class="text-gray-700"><span class="font-medium">Shop:</span> ${customer.shopName}</p>
+                        <p class="text-gray-700"><span class="font-medium">Address:</span> ${customer.address.replace(/\n/g, '<br>')}</p>
+                    `;
+                } else {
+                    summaryCustomerDetails.innerHTML = '';
+                }
+
                 if (!lastOrder || lastOrder.length === 0) {
                     summaryItemsContainer.innerHTML = '<p class="text-gray-500">No order details found.</p>';
                     return;
@@ -715,80 +844,33 @@
                     viewOrderBtn.classList.add('hidden');
                 }
             };
+            
+            const updateCustomerDisplay = () => {
+                 const savedCustomer = localStorage.getItem(customerDetailsKey);
+                if (savedCustomer) {
+                    const customer = JSON.parse(savedCustomer);
+                    customerNameDisplay.textContent = `Hi, ${customer.name.split(' ')[0]}`;
+                    customerNameDisplay.classList.remove('hidden');
+                }
+            };
 
             viewOrderBtn.addEventListener('click', openSummary);
             closeSummaryBtn.addEventListener('click', closeSummary);
 
-            whatsappBtn.addEventListener('click', async () => {
-                if (cart.length === 0) return;
-                
-                whatsappBtn.disabled = true;
-                whatsappBtn.innerHTML = `<span>Processing...</span>`;
-
-                try {
-                    await runTransaction(db, async (transaction) => {
-                        const productsInCart = {};
-                        cart.forEach(item => {
-                            if (!productsInCart[item.productId]) {
-                                productsInCart[item.productId] = [];
-                            }
-                            productsInCart[item.productId].push(item);
-                        });
-
-                        const productRefs = {};
-                        const productDocs = {};
-
-                        for (const productId in productsInCart) {
-                            const docRef = doc(db, productsCollectionPath, productId);
-                            productRefs[productId] = docRef;
-                            const productDoc = await transaction.get(docRef);
-                            if (!productDoc.exists()) throw new Error(`Product ${productId} not found!`);
-                            productDocs[productId] = productDoc.data();
-                        }
-
-                        for (const productId in productsInCart) {
-                            const items = productsInCart[productId];
-                            const productData = productDocs[productId];
-
-                            items.forEach(item => {
-                                const colorIndex = productData.colors.findIndex(c => c.name === item.color);
-                                if (colorIndex === -1) throw new Error(`Color ${item.color} not found for ${item.name}`);
-
-                                const currentStock = productData.colors[colorIndex].stockBySize[item.size];
-                                if (currentStock === undefined) throw new Error(`Size ${item.size} not found for ${item.name} (${item.color})`);
-                                
-                                const newStock = currentStock - item.quantity;
-                                if (newStock < 0) throw new Error(`Not enough stock for ${item.name} (${item.size}). Only ${currentStock} left.`);
-                                
-                                productData.colors[colorIndex].stockBySize[item.size] = newStock;
-                            });
-                            
-                            transaction.update(productRefs[productId], { colors: productData.colors });
-                        }
-                    });
-                    
-                    // If transaction succeeds:
-                    localStorage.setItem(orderStorageKey, JSON.stringify(cart));
-                    cart = [];
-                    updateCart();
-                    closeCart();
-                    setTimeout(openSummary, 300);
-                    showToast('Order placed successfully!');
-
-                } catch (e) {
-                    console.error("Order failed:", e);
-                    showToast(e.message || "Order failed. Stock may have changed.", true);
-                } finally {
-                    whatsappBtn.disabled = false;
-                    whatsappBtn.innerHTML = `<span>Review & Order</span>`;
-                }
-            });
-
             confirmOrderBtn.addEventListener('click', () => {
                 const lastOrder = JSON.parse(localStorage.getItem(orderStorageKey));
+                const customer = JSON.parse(localStorage.getItem(customerDetailsKey));
                 if (!lastOrder || lastOrder.length === 0) return;
                 
-                let message = `Hello LAFANDAR, I'd like to place an order:\n\n*Order Summary:*\n\n`;
+                let message = `*New Order for LAFANDAR*\n\n`;
+                if (customer) {
+                    message += `*Customer Details:*\n`;
+                    message += `*Name:* ${customer.name}\n`;
+                    message += `*Shop:* ${customer.shopName}\n`;
+                    message += `*Address:* ${customer.address}\n\n`;
+                }
+                
+                message += `*Order Summary:*\n\n`;
                 lastOrder.forEach((item, index) => {
                     message += `*${index + 1}. ${item.name}*\n   - Color: ${item.color}\n   - Size: ${item.size}\n`;
                     if (item.design) message += `   - Design: ${item.design.name}\n`;
@@ -825,6 +907,7 @@
 
             // --- INITIALIZATION ---
             updateCart();
+            updateCustomerDisplay();
         });
     </script>
 </body>
