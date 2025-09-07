@@ -29,6 +29,10 @@
             background-color: #4f46e5;
             color: white;
         }
+        .nav-btn.active {
+            background-color: #eef2ff;
+            color: #4f46e5;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -70,7 +74,9 @@
         <header class="bg-white shadow-sm">
             <div class="container mx-auto px-4 py-4 flex justify-between items-center">
                 <h1 class="text-2xl font-bold text-gray-800">LAFANDAR Admin</h1>
-                <div>
+                <div class="flex items-center gap-2">
+                    <button id="view-products-btn" class="nav-btn font-semibold py-2 px-4 rounded-lg transition-colors active">Products</button>
+                    <button id="view-visitors-btn" class="nav-btn font-semibold py-2 px-4 rounded-lg transition-colors">Visitors</button>
                     <button id="add-product-btn" class="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors">Add New Product</button>
                     <button id="sign-out-btn" class="ml-4 bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition-colors">Sign Out</button>
                 </div>
@@ -78,12 +84,31 @@
         </header>
 
         <main class="container mx-auto p-4">
-            <div id="product-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <!-- Products will be loaded here -->
+            <div id="products-view">
+                <div id="product-list" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Products will be loaded here -->
+                </div>
             </div>
+            <div id="visitors-view" class="hidden">
+                <div class="bg-white rounded-lg shadow overflow-hidden">
+                    <table class="min-w-full">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Mobile</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Visit Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="visitor-list" class="bg-white divide-y divide-gray-200">
+                            <!-- Visitor data will be here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <div id="loading-indicator" class="flex justify-center items-center mt-8">
                 <div class="loader"></div>
-                <p class="ml-4 text-gray-600">Loading products...</p>
+                <p class="ml-4 text-gray-600">Loading data...</p>
             </div>
         </main>
     </div>
@@ -126,7 +151,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
@@ -142,6 +167,7 @@
             const appId = 'lafandar-app';
             const productsCollectionPath = `/artifacts/${appId}/public/data/products`;
             const sizesCollectionPath = `/artifacts/${appId}/public/data/sizes`;
+            const visitorsCollectionPath = `/artifacts/${appId}/public/data/visitors`;
 
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
@@ -155,6 +181,7 @@
             const adminPanel = document.getElementById('admin-panel');
             const signOutBtn = document.getElementById('sign-out-btn');
             const productList = document.getElementById('product-list');
+            const visitorList = document.getElementById('visitor-list');
             const loadingIndicator = document.getElementById('loading-indicator');
             const addProductBtn = document.getElementById('add-product-btn');
             const productModal = document.getElementById('product-modal');
@@ -163,9 +190,14 @@
             const cancelModalBtn = document.getElementById('cancel-modal-btn');
             const colorsContainer = document.getElementById('colors-container');
             const addColorBtn = document.getElementById('add-color-btn');
+            const viewProductsBtn = document.getElementById('view-products-btn');
+            const viewVisitorsBtn = document.getElementById('view-visitors-btn');
+            const productsView = document.getElementById('products-view');
+            const visitorsView = document.getElementById('visitors-view');
             
             let products = [];
             let masterSizes = [];
+            let visitors = [];
             
             // --- AUTHENTICATION LOGIC ---
             onAuthStateChanged(auth, user => {
@@ -174,6 +206,7 @@
                     adminPanel.style.display = 'block';
                     loadProducts();
                     loadMasterSizes();
+                    loadVisitors();
                 } else {
                     loginScreen.style.display = 'flex';
                     adminPanel.style.display = 'none';
@@ -194,6 +227,23 @@
             });
 
             signOutBtn.addEventListener('click', () => signOut(auth));
+            
+            // --- VIEW TOGGLING ---
+            viewProductsBtn.addEventListener('click', () => {
+                productsView.style.display = 'block';
+                visitorsView.style.display = 'none';
+                addProductBtn.style.display = 'inline-block';
+                viewProductsBtn.classList.add('active');
+                viewVisitorsBtn.classList.remove('active');
+            });
+             viewVisitorsBtn.addEventListener('click', () => {
+                productsView.style.display = 'none';
+                visitorsView.style.display = 'block';
+                addProductBtn.style.display = 'none';
+                viewProductsBtn.classList.remove('active');
+                viewVisitorsBtn.classList.add('active');
+            });
+
 
             const loadMasterSizes = () => {
                 onSnapshot(collection(db, sizesCollectionPath), (snapshot) => {
@@ -209,10 +259,18 @@
                     loadingIndicator.style.display = 'none';
                 });
             };
+            
+            const loadVisitors = () => {
+                 const q = query(collection(db, visitorsCollectionPath), orderBy("timestamp", "desc"));
+                 onSnapshot(q, (snapshot) => {
+                    visitors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    renderVisitors();
+                });
+            };
 
             const renderProducts = () => {
                 productList.innerHTML = '';
-                if (products.length === 0) {
+                if (products.length === 0 && productsView.style.display !== 'none') {
                     productList.innerHTML = `<p class="col-span-full text-center text-gray-500">No products found. Click 'Add New Product' to start.</p>`;
                 } else {
                     products.forEach(product => {
@@ -228,6 +286,24 @@
                             </div>
                         `;
                         productList.appendChild(card);
+                    });
+                }
+            };
+            
+             const renderVisitors = () => {
+                visitorList.innerHTML = '';
+                if (visitors.length === 0) {
+                    visitorList.innerHTML = `<tr><td colspan="3" class="text-center text-gray-500 py-4">No visitor data yet.</td></tr>`;
+                } else {
+                    visitors.forEach(visitor => {
+                        const row = document.createElement('tr');
+                        const visitDate = visitor.timestamp ? visitor.timestamp.toDate().toLocaleString() : 'N/A';
+                        row.innerHTML = `
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${visitor.name}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${visitor.mobile}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">${visitDate}</td>
+                        `;
+                        visitorList.appendChild(row);
                     });
                 }
             };
@@ -354,7 +430,6 @@
                     if (newSize && !masterSizes.includes(newSize)) {
                         await setDoc(doc(db, sizesCollectionPath, newSize), {});
                         input.value = '';
-                        // The onSnapshot listener will handle re-rendering the tags across all modals.
                         setTimeout(() => openModal(products.find(p => p.id === document.getElementById('product-id').value)), 200);
                     } else if (newSize) {
                         alert(`Size "${newSize}" already exists.`);
