@@ -202,7 +202,12 @@
             // --- AUTHENTICATION & ERROR HANDLING ---
             const handlePermissionError = (error) => {
                 if (error.code === 'permission-denied') {
-                    alert("Your session has expired. Please log in again to continue.");
+                    const currentUser = auth.currentUser;
+                    if (currentUser) {
+                        alert(`Permission Denied!\n\nThe logged-in user (UID: ${currentUser.uid}) does not have the correct permissions.\n\nPlease copy this exact UID and paste it into your Firestore security rules.`);
+                    } else {
+                        alert("Your session has expired. Please log in again to continue.");
+                    }
                     signOut(auth);
                 } else {
                     alert(`An unexpected error occurred: ${error.message}`);
