@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LAFANDAR | T-Shirt Catalogue</title>
     
-    <!-- Official Tailwind CSS CDN -->
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Google Fonts: Inter -->
@@ -63,18 +63,19 @@
         .design-option {
             transition: transform 0.2s ease-in-out;
             cursor: pointer;
+            position: relative;
         }
         .design-option:hover {
             transform: scale(1.05);
         }
-        .design-option .check-overlay {
-            transition: opacity 0.2s ease-in-out;
+        .design-option .selected-checkmark {
+            display: none;
         }
-        .design-option.selected .check-overlay {
-            opacity: 1;
+        .design-option.selected .selected-checkmark {
+            display: flex;
         }
-        .design-option.selected {
-            transform: scale(1.05);
+        .design-option.selected img {
+            filter: brightness(0.8);
         }
         #design-modal-content {
             transform: scale(0.95);
@@ -92,6 +93,9 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        .image-preloader {
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
@@ -99,7 +103,7 @@
     <!-- Header -->
     <header class="bg-white shadow-md sticky top-0 z-40">
         <div class="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
-            <h1 class="text-xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+            <h1 class="text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
                 LAFANDAR CATALOGUE
             </h1>
             <button id="cart-button" class="relative">
@@ -112,7 +116,7 @@
     </header>
 
     <!-- Main Content -->
-    <main id="product-grid" class="container mx-auto px-4 sm:px-6 py-8 sm:py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
+    <main id="product-grid" class="container mx-auto px-4 sm:px-6 py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         <div id="grid-loader" class="col-span-full flex flex-col items-center justify-center min-h-[50vh]">
             <div class="loader"></div>
             <p class="mt-4 text-gray-500">Loading Latest Collection...</p>
@@ -124,15 +128,15 @@
         <div id="cart-panel" class="w-full max-w-md bg-white h-full shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out">
             <div class="flex flex-col h-full">
                 <!-- Cart Header -->
-                <div class="flex justify-between items-center p-4 sm:p-6 border-b">
-                    <h2 class="text-xl sm:text-2xl font-semibold">Your Cart</h2>
+                <div class="flex justify-between items-center p-6 border-b">
+                    <h2 class="text-2xl font-semibold">Your Cart</h2>
                     <button id="close-cart-btn" class="text-gray-500 hover:text-gray-800">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
 
                 <!-- Cart Items -->
-                <div id="cart-items-container" class="flex-grow p-4 sm:p-6 overflow-y-auto">
+                <div id="cart-items-container" class="flex-grow p-6 overflow-y-auto">
                     <!-- Cart items will be injected here -->
                     <div id="empty-cart-message" class="text-center text-gray-500 mt-10">
                         <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-16 w-16 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
@@ -142,7 +146,7 @@
                 </div>
 
                 <!-- Cart Footer -->
-                <div class="p-4 sm:p-6 border-t bg-gray-50">
+                <div class="p-6 border-t bg-gray-50">
                     <div class="flex justify-between items-center mb-4">
                         <span class="text-lg font-medium">Subtotal</span>
                         <span id="cart-subtotal" class="text-xl font-bold">₹0.00</span>
@@ -161,7 +165,7 @@
     <div id="design-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] hidden items-center justify-center p-4" role="dialog" aria-modal="true">
         <div id="design-modal-content" class="bg-white rounded-lg shadow-2xl p-4 relative max-w-lg w-full">
             <button id="close-design-btn" class="absolute -top-4 -right-4 bg-white rounded-full p-2 text-gray-700 hover:text-gray-900 shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 z-10">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin-round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
             <img id="design-modal-image" src="" alt="Design Preview" class="w-full h-auto max-h-[80vh] object-contain rounded">
         </div>
@@ -197,14 +201,34 @@
             const productsCollectionPath = `/artifacts/${appId}/public/data/products`;
 
             // --- FIREBASE INITIALIZATION ---
-            const app = initializeApp(firebaseConfig);
-            const db = getFirestore(app);
-            const auth = getAuth(app);
+            let app;
+            let db;
+            let auth;
             
+            try {
+                 app = initializeApp(firebaseConfig);
+                 db = getFirestore(app);
+                 auth = getAuth(app);
+            } catch (e) {
+                console.error("Firebase initialization failed:", e);
+                document.getElementById('grid-loader').innerHTML = '<p class="text-red-500">Could not connect to database. Please check configuration.</p>';
+                return;
+            }
+           
             // --- STATE ---
             let products = [];
             const savedCart = localStorage.getItem(cartStorageKey);
             let cart = savedCart ? JSON.parse(savedCart) : [];
+            let isAuthReady = false;
+
+            // --- AUTH LISTENER ---
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    isAuthReady = true;
+                } else {
+                    signInAnonymously(auth).catch(error => console.error("Anonymous sign-in failed:", error));
+                }
+            });
 
             // --- DOM ELEMENTS ---
             const productGrid = document.getElementById('product-grid');
@@ -225,33 +249,42 @@
             const closeDesignBtn = document.getElementById('close-design-btn');
             const whatsappBtn = document.getElementById('whatsapp-btn');
 
-            onAuthStateChanged(auth, user => {
-                if (user) {
-                    onSnapshot(collection(db, productsCollectionPath), (snapshot) => {
-                        products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        renderProducts();
-                        updateStockDisplay(); // Update stock based on cart after products load
-                    });
-                } else {
-                    signInAnonymously(auth).catch(error => console.error("Anonymous sign-in failed:", error));
-                }
+            // --- FETCH & RENDER PRODUCTS FROM FIREBASE ---
+            onSnapshot(collection(db, productsCollectionPath), (snapshot) => {
+                products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                renderProducts();
             });
 
-
             // --- HELPERS ---
-            const generateSizeHTML = (product, colorData) => {
-                return product.sizes.map(size => {
-                    const stock = colorData.stockBySize?.[size] !== undefined ? colorData.stockBySize[size] : 0;
+            const generateSizeHTML = (product, colorData, cart) => {
+                const availableSizes = colorData.stockBySize ? Object.keys(colorData.stockBySize).sort() : [];
+                
+                if(availableSizes.length === 0){
+                    return `<p class="text-sm text-gray-500 text-center col-span-full py-4">No sizes available for this color.</p>`;
+                }
+
+                return availableSizes.map(size => {
+                    const totalStock = colorData.stockBySize?.[size] || 0;
+                    
+                    const itemInCart = cart.find(item => 
+                        item.productId === product.id &&
+                        item.color === colorData.name &&
+                        item.size === size
+                    );
+                    const quantityInCart = itemInCart ? itemInCart.quantity : 0;
+                    const remainingStock = totalStock - quantityInCart;
+                    const isOutOfStock = remainingStock <= 0;
+
                     return `
-                        <div class="size-container flex items-center justify-between gap-2">
-                            <button class="size-btn border-2 border-gray-300 rounded-md py-2 font-semibold text-sm transition-colors w-14 text-center hover:bg-gray-200"
-                                    data-size="${size}">
+                        <div class="size-container grid grid-cols-3 items-center gap-2">
+                            <button class="size-btn border-2 border-gray-300 rounded-md py-2 font-semibold text-sm transition-colors text-center ${isOutOfStock ? 'bg-gray-100 text-gray-400 cursor-not-allowed line-through' : 'hover:bg-gray-200'}"
+                                    data-size="${size}" ${isOutOfStock ? 'disabled' : ''}>
                                 ${size}
                             </button>
-                            <span class="stock-display text-xs w-16 text-center text-gray-500" data-size="${size}">
-                                ${stock} left
+                            <span class="stock-display text-xs text-center ${isOutOfStock ? 'text-red-500 font-semibold' : 'text-gray-500'}">
+                                ${isOutOfStock ? 'Out of Stock' : `${remainingStock} left`}
                             </span>
-                            <input type="number" min="1" value="1" class="quantity-input w-16 border-gray-300 rounded-md text-center text-sm p-1" placeholder="Qty">
+                            <input type="number" min="1" max="${remainingStock}" value="1" class="quantity-input border-gray-300 rounded-md text-center text-sm p-1" placeholder="Qty" ${isOutOfStock ? 'disabled' : ''}>
                         </div>
                     `;
                 }).join('');
@@ -259,7 +292,9 @@
 
             // --- RENDER PRODUCTS ---
             const renderProducts = () => {
-                if (gridLoader) gridLoader.remove();
+                if (gridLoader) {
+                    gridLoader.remove();
+                }
                 productGrid.innerHTML = '';
                 if (products.length === 0) {
                      productGrid.innerHTML = `<p class="col-span-full text-center text-gray-500">No products found. The owner might be adding new stock!</p>`;
@@ -269,6 +304,9 @@
                     const productCard = document.createElement('div');
                     productCard.className = 'bg-white rounded-lg shadow-lg overflow-hidden flex flex-col';
                     productCard.dataset.productId = product.id;
+                    const firstColor = product.colors?.[0];
+
+                    if (!firstColor) return; // Skip rendering if a product has no colors
 
                     const colorSwatches = product.colors.map((color, index) => `
                         <button class="color-swatch w-8 h-8 rounded-full border-2 border-white ring-1 ring-gray-300 ${index === 0 ? 'selected' : ''}" 
@@ -279,11 +317,14 @@
                         </button>
                     `).join('');
 
-                    const sizeButtons = generateSizeHTML(product, product.colors[0]);
+                    const sizeButtons = generateSizeHTML(product, firstColor, cart);
+                    
+                    const preloaderImages = product.colors.map(color => `<img src="${color.image}" alt="">`).join('');
 
                     productCard.innerHTML = `
-                        <div class="relative">
-                            <img src="${product.colors[0].image}" alt="${product.name}" class="product-image w-full h-80 sm:h-96 object-cover">
+                        <div class="relative h-96">
+                            <img src="${firstColor.image}" alt="${product.name}" class="product-image w-full h-full object-cover">
+                            <div class="image-preloader">${preloaderImages}</div>
                         </div>
                         <div class="p-4 sm:p-6 flex-grow flex flex-col">
                             <h2 class="text-xl font-bold mb-2">${product.name}</h2>
@@ -297,10 +338,10 @@
                             </div>
                             
                             <div class="mb-6">
-                                <div class="flex justify-between items-baseline mb-2 text-xs sm:text-sm">
-                                    <h3 class="font-semibold text-gray-700 w-14 text-center">Size</h3>
-                                    <h3 class="font-semibold text-gray-700 w-16 text-center">Stock</h3>
-                                    <h3 class="font-semibold text-gray-700 w-16 text-center">Quantity</h3>
+                                <div class="grid grid-cols-3 items-baseline mb-2 text-center">
+                                    <h3 class="text-sm font-semibold text-gray-700">Size</h3>
+                                    <h3 class="text-sm font-semibold text-gray-700">Stock</h3>
+                                    <h3 class="text-sm font-semibold text-gray-700">Quantity</h3>
                                 </div>
                                 <div class="size-list flex flex-col gap-2">
                                     ${sizeButtons}
@@ -309,10 +350,12 @@
 
                             <div class="design-section hidden mb-6">
                                 <h3 class="text-sm font-semibold mb-2 text-gray-700">Choose a Design</h3>
-                                <div class="design-options flex flex-wrap gap-3"></div>
+                                <div class="design-options flex flex-wrap gap-3">
+                                    <!-- Designs will be injected here -->
+                                </div>
                             </div>
                             
-                            <div class="flex justify-between items-center mt-auto">
+                            <div class="flex justify-between items-center mt-auto pt-4 border-t">
                                 <span class="text-2xl font-bold">₹${product.price}</span>
                                 <button class="add-to-cart-btn bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors transform hover:scale-105">
                                     Add to Cart
@@ -327,61 +370,18 @@
                     const designOptionsContainer = productCard.querySelector('.design-options');
                     if (firstColorData && firstColorData.designs && firstColorData.designs.length > 0) {
                         designOptionsContainer.innerHTML = firstColorData.designs.map(design => `
-                            <button class="design-option relative p-1 border-2 border-transparent rounded-md text-center" data-design-id="${design.id}" data-design-name="${design.name}">
-                                <div class="check-overlay pointer-events-none absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-md transition-opacity opacity-0">
-                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                            <button class="design-option p-1 rounded-md text-center" data-design-id="${design.id}" data-design-name="${design.name}">
+                                <div class="relative">
+                                    <img src="${design.image}" alt="${design.name}" class="w-16 h-16 object-cover rounded-sm pointer-events-none mx-auto transition-all duration-200">
+                                    <div class="selected-checkmark absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                    </div>
                                 </div>
-                                <img src="${design.image}" alt="${design.name}" class="w-16 h-16 object-cover rounded-sm pointer-events-none mx-auto">
                                 <span class="text-xs text-gray-600 pointer-events-none block mt-1">${design.name}</span>
                             </button>
                         `).join('');
                         designSection.classList.remove('hidden');
                     }
-                });
-            };
-
-            // --- DYNAMIC STOCK DISPLAY LOGIC ---
-            const updateStockDisplay = () => {
-                document.querySelectorAll('.bg-white[data-product-id]').forEach(card => {
-                    const productId = card.dataset.productId;
-                    const product = products.find(p => p.id === productId);
-                    if (!product) return;
-
-                    const selectedColorEl = card.querySelector('.color-swatch.selected');
-                    if (!selectedColorEl) return;
-                    
-                    const selectedColorName = selectedColorEl.dataset.color;
-                    const colorData = product.colors.find(c => c.name === selectedColorName);
-                    if (!colorData) return;
-
-                    card.querySelectorAll('.size-container').forEach(container => {
-                        const size = container.querySelector('.size-btn').dataset.size;
-                        const originalStock = colorData.stockBySize?.[size] || 0;
-                        
-                        const quantityInCart = cart.reduce((total, item) => {
-                            if(item.productId === productId && item.color === selectedColorName && item.size === size) {
-                                return total + item.quantity;
-                            }
-                            return total;
-                        }, 0);
-                        
-                        const remainingStock = originalStock - quantityInCart;
-                        
-                        const stockDisplayEl = container.querySelector('.stock-display');
-                        const sizeBtn = container.querySelector('.size-btn');
-                        const quantityInput = container.querySelector('.quantity-input');
-
-                        stockDisplayEl.textContent = remainingStock > 0 ? `${remainingStock} left` : 'Out of Stock';
-                        stockDisplayEl.classList.toggle('text-red-500', remainingStock <= 0);
-                        stockDisplayEl.classList.toggle('font-semibold', remainingStock <= 0);
-                        
-                        sizeBtn.disabled = remainingStock <= 0;
-                        quantityInput.disabled = remainingStock <= 0;
-                        quantityInput.max = remainingStock;
-                        sizeBtn.classList.toggle('bg-gray-100', remainingStock <= 0);
-                        sizeBtn.classList.toggle('text-gray-400', remainingStock <= 0);
-                        sizeBtn.classList.toggle('cursor-not-allowed', remainingStock <= 0);
-                    });
                 });
             };
 
@@ -397,11 +397,8 @@
                     const newImage = e.target.dataset.image;
                     const productImage = card.querySelector('.product-image');
                     
-                    productImage.classList.add('fade-out');
-                    setTimeout(() => {
-                        productImage.src = newImage;
-                        productImage.classList.remove('fade-out');
-                    }, 300);
+                    // No fade effect for instant switch
+                    productImage.src = newImage;
 
                     card.querySelectorAll('.color-swatch').forEach(swatch => swatch.classList.remove('selected'));
                     e.target.classList.add('selected');
@@ -409,8 +406,7 @@
                     const selectedColorName = e.target.dataset.color;
                     const selectedColorData = product.colors.find(c => c.name === selectedColorName);
 
-                    card.querySelector('.size-list').innerHTML = generateSizeHTML(product, selectedColorData);
-                    updateStockDisplay(); // Update stock for new color
+                    card.querySelector('.size-list').innerHTML = generateSizeHTML(product, selectedColorData, cart);
 
                     const designSection = card.querySelector('.design-section');
                     const designOptionsContainer = card.querySelector('.design-options');
@@ -418,11 +414,13 @@
 
                     if (selectedColorData && selectedColorData.designs && selectedColorData.designs.length > 0) {
                         designOptionsContainer.innerHTML = selectedColorData.designs.map(design => `
-                            <button class="design-option relative p-1 border-2 border-transparent rounded-md text-center" data-design-id="${design.id}" data-design-name="${design.name}">
-                                <div class="check-overlay pointer-events-none absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-md transition-opacity opacity-0">
-                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                             <button class="design-option p-1 rounded-md text-center" data-design-id="${design.id}" data-design-name="${design.name}">
+                                <div class="relative">
+                                    <img src="${design.image}" alt="${design.name}" class="w-16 h-16 object-cover rounded-sm pointer-events-none mx-auto transition-all duration-200">
+                                    <div class="selected-checkmark absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-sm">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-white" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                                    </div>
                                 </div>
-                                <img src="${design.image}" alt="${design.name}" class="w-16 h-16 object-cover rounded-sm pointer-events-none mx-auto">
                                 <span class="text-xs text-gray-600 pointer-events-none block mt-1">${design.name}</span>
                             </button>
                         `).join('');
@@ -442,10 +440,17 @@
                 if (e.target.closest('.design-option')) {
                     const designButton = e.target.closest('.design-option');
                     const designImageEl = designButton.querySelector('img');
-                    if(designImageEl) openDesignModal(designImageEl.src);
+
+                    if(designImageEl) {
+                        openDesignModal(designImageEl.src);
+                    }
                     
-                    card.querySelectorAll('.design-option').forEach(btn => btn.classList.remove('selected'));
-                    designButton.classList.add('selected');
+                    if(designButton.classList.contains('selected')){
+                         designButton.classList.remove('selected');
+                    } else {
+                        card.querySelectorAll('.design-option').forEach(btn => btn.classList.remove('selected'));
+                        designButton.classList.add('selected');
+                    }
                 }
                 
                 // Handle Add to Cart
@@ -473,25 +478,33 @@
 
                     let totalQuantityAdded = 0;
                     let stockError = false;
+                    const selectedColorName = selectedColorEl.dataset.color;
+                    const selectedColorData = product.colors.find(c => c.name === selectedColorName);
 
                     selectedSizeNodes.forEach(sizeNode => {
                         if (stockError) return;
                         const size = sizeNode.dataset.size;
                         const quantityInput = sizeNode.parentElement.querySelector('.quantity-input');
                         const quantity = parseInt(quantityInput.value, 10) || 1;
-                        const availableStock = parseInt(quantityInput.max, 10);
+                        const availableStock = selectedColorData.stockBySize?.[size] || 0;
+                        const itemInCart = cart.find(item => item.id.startsWith(`${productId}-${selectedColorName}-${size}`));
+                        const quantityInCart = itemInCart ? itemInCart.quantity : 0;
 
-                        if (quantity > availableStock) {
-                            showToast(`Only ${availableStock} left for size ${size}. Please reduce quantity.`, true);
+                        if (quantity > (availableStock - quantityInCart)) {
+                            showToast(`Only ${availableStock - quantityInCart} left for size ${size}.`, true);
                             stockError = true;
                             return;
                         }
 
                         const item = {
-                            id: `${productId}-${selectedColorEl.dataset.color}-${size}-${itemDetails.designId || ''}`,
-                            productId: productId, name: product.name, price: product.price,
-                            color: selectedColorEl.dataset.color, size: size,
-                            image: selectedColorEl.dataset.image, quantity: quantity,
+                            id: `${productId}-${selectedColorName}-${size}-${itemDetails.designId || 'no-design'}`,
+                            productId: productId,
+                            name: product.name,
+                            price: product.price,
+                            color: selectedColorName,
+                            size: size,
+                            image: selectedColorEl.dataset.image,
+                            quantity: quantity,
                             ...(itemDetails.designId && { design: { name: itemDetails.designName } })
                         };
                         addToCart(item);
@@ -519,10 +532,10 @@
 
             const updateCart = () => {
                 localStorage.setItem(cartStorageKey, JSON.stringify(cart));
+                renderProducts(); // Re-render to update stock display
                 renderCartItems();
                 updateCartCount();
                 updateCartSubtotal();
-                updateStockDisplay(); // This is the key change!
                 whatsappBtn.disabled = cart.length === 0;
             };
 
@@ -534,17 +547,17 @@
                     emptyCartMessage.style.display = 'none';
                     cart.forEach(item => {
                         const cartItemEl = document.createElement('div');
-                        cartItemEl.className = 'flex items-center space-x-3 sm:space-x-4 mb-5 pb-5 border-b last:border-b-0 cart-item-enter';
+                        cartItemEl.className = 'flex items-start sm:items-center space-x-4 mb-5 pb-5 border-b last:border-b-0 cart-item-enter';
                         cartItemEl.innerHTML = `
-                            <img src="${item.image}" alt="${item.name}" class="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-md">
+                            <img src="${item.image}" alt="${item.name}" class="w-20 h-24 object-cover rounded-md">
                             <div class="flex-grow">
                                 <p class="font-semibold">${item.name}</p>
                                 <p class="text-sm text-gray-500">Color: ${item.color}</p>
                                 <p class="text-sm text-gray-500">Size: ${item.size}</p>
                                 ${item.design ? `<p class="text-sm text-gray-500 font-medium">Design: ${item.design.name}</p>` : ''}
-                                <p class="font-bold mt-1">₹${item.price}</p>
+                                <p class="font-bold mt-1 text-base">₹${item.price}</p>
                             </div>
-                            <div class="text-right">
+                            <div class="text-right flex flex-col items-end">
                                 <div class="flex items-center border rounded-md">
                                     <button class="px-2 py-1 text-gray-600 hover:bg-gray-100" data-itemid="${item.id}" data-action="decrease">-</button>
                                     <span class="px-3">${item.quantity}</span>
@@ -566,28 +579,20 @@
                 const itemIndex = cart.findIndex(item => item.id === itemId);
                 if (itemIndex === -1) return;
 
+                const currentItem = cart[itemIndex];
+                const product = products.find(p => p.id === currentItem.productId);
+                const colorData = product.colors.find(c => c.name === currentItem.color);
+                const totalStock = colorData.stockBySize?.[currentItem.size] || 0;
+
                 if (action === 'increase') {
-                    const item = cart[itemIndex];
-                    const product = products.find(p => p.id === item.productId);
-                    if (product) {
-                        const colorData = product.colors.find(c => c.name === item.color);
-                        if (colorData) {
-                            const totalStock = colorData.stockBySize?.[item.size] || 0;
-                            if (item.quantity < totalStock) {
-                                cart[itemIndex].quantity++;
-                            } else {
-                                showToast('No more stock available for this item.', true);
-                                return; // Stop the function here
-                            }
-                        } else {
-                           cart[itemIndex].quantity++; // Failsafe if data is missing
-                        }
+                    if (currentItem.quantity < totalStock) {
+                        currentItem.quantity++;
                     } else {
-                        cart[itemIndex].quantity++; // Failsafe if product is missing
+                        showToast(`No more items left in stock!`, true);
                     }
                 } else if (action === 'decrease') {
-                    cart[itemIndex].quantity--;
-                    if (cart[itemIndex].quantity <= 0) cart.splice(itemIndex, 1);
+                    currentItem.quantity--;
+                    if (currentItem.quantity <= 0) cart.splice(itemIndex, 1);
                 } else if (action === 'remove') {
                     cart.splice(itemIndex, 1);
                 }
