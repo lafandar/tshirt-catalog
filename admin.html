@@ -21,6 +21,14 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .size-tag {
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+        }
+        .size-tag.selected {
+            background-color: #4f46e5;
+            color: white;
+        }
     </style>
 </head>
 <body class="bg-gray-100">
@@ -118,7 +126,7 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
@@ -133,6 +141,7 @@
             };
             const appId = 'lafandar-app';
             const productsCollectionPath = `/artifacts/${appId}/public/data/products`;
+            const sizesCollectionPath = `/artifacts/${appId}/public/data/sizes`;
 
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
@@ -154,17 +163,18 @@
             const cancelModalBtn = document.getElementById('cancel-modal-btn');
             const colorsContainer = document.getElementById('colors-container');
             const addColorBtn = document.getElementById('add-color-btn');
+            
             let products = [];
+            let masterSizes = [];
             
             // --- AUTHENTICATION LOGIC ---
             onAuthStateChanged(auth, user => {
                 if (user) {
-                    // User is signed in
                     loginScreen.style.display = 'none';
                     adminPanel.style.display = 'block';
                     loadProducts();
+                    loadMasterSizes();
                 } else {
-                    // User is signed out
                     loginScreen.style.display = 'flex';
                     adminPanel.style.display = 'none';
                 }
@@ -179,19 +189,17 @@
                 try {
                     await signInWithEmailAndPassword(auth, email, password);
                 } catch (error) {
-                    console.error("Login failed:", error);
-                    loginError.textContent = 'Invalid email or password. Please try again.';
+                    loginError.textContent = 'Invalid email or password.';
                 }
             });
 
-            signOutBtn.addEventListener('click', async () => {
-                try {
-                    await signOut(auth);
-                } catch (error) {
-                    console.error("Sign out failed:", error);
-                }
-            });
+            signOutBtn.addEventListener('click', () => signOut(auth));
 
+            const loadMasterSizes = () => {
+                onSnapshot(collection(db, sizesCollectionPath), (snapshot) => {
+                    masterSizes = snapshot.docs.map(doc => doc.id).sort();
+                });
+            };
 
             const loadProducts = () => {
                 loadingIndicator.style.display = 'flex';
@@ -237,24 +245,36 @@
                     product.colors.forEach(color => addColorRow(color));
                 } else {
                     modalTitle.textContent = 'Add Product';
-                    addColorRow(); // Add one default color row
+                    addColorRow();
                 }
                 productModal.classList.add('is-open');
             };
 
-            const closeModal = () => {
-                productModal.classList.remove('is-open');
-            };
+            const closeModal = () => productModal.classList.remove('is-open');
             
             addProductBtn.addEventListener('click', () => openModal());
             cancelModalBtn.addEventListener('click', closeModal);
             addColorBtn.addEventListener('click', () => addColorRow());
 
+            const populateStockInputs = (stockContainer, sizeTagsContainer) => {
+                stockContainer.innerHTML = '';
+                const selectedSizes = Array.from(sizeTagsContainer.querySelectorAll('.size-tag.selected')).map(tag => tag.dataset.size);
+                selectedSizes.forEach(size => {
+                    const stockValue = sizeTagsContainer.querySelector(`.size-tag[data-size="${size}"]`).dataset.stock || 0;
+                    const stockDiv = document.createElement('div');
+                    stockDiv.className = 'flex items-center gap-2';
+                    stockDiv.innerHTML = `
+                        <label class="w-16">${size}:</label>
+                        <input type="number" class="stock-input w-24 rounded-md border-gray-300 text-sm" data-size="${size}" value="${stockValue}" min="0" placeholder="Stock">
+                    `;
+                    stockContainer.appendChild(stockDiv);
+                });
+            };
+
             const addColorRow = (color = {}) => {
                 const div = document.createElement('div');
                 div.className = 'border p-3 rounded-md space-y-3';
-
-                const availableSizesForColor = color.stockBySize ? Object.keys(color.stockBySize).join(',') : '';
+                const availableSizesForColor = color.stockBySize ? Object.keys(color.stockBySize) : [];
 
                 div.innerHTML = `
                     <div class="flex items-center gap-4">
@@ -268,8 +288,12 @@
                         ${color.image ? `<img src="${color.image}" class="h-16 mt-2 rounded">` : ''}
                     </div>
                     <div>
-                        <label class="text-sm font-medium text-gray-700">Available Sizes for this Color (e.g., S,M,L)</label>
-                        <input type="text" placeholder="S,M,L,XL" class="color-sizes-input mt-1 block w-full rounded-md border-gray-300" value="${availableSizesForColor}">
+                        <label class="text-sm font-medium text-gray-700">Available Sizes for this Color</label>
+                        <div class="size-selector-container mt-2 flex flex-wrap gap-2"></div>
+                        <div class="mt-2 flex gap-2 items-center">
+                            <input type="text" class="new-size-input rounded-md border-gray-300 text-sm w-32" placeholder="Add New Size">
+                            <button type="button" class="add-new-size-btn bg-gray-600 text-white text-xs px-3 py-1 rounded hover:bg-gray-700">Add</button>
+                        </div>
                     </div>
                     <div>
                         <label class="text-sm font-medium">Stock Levels</label>
@@ -283,26 +307,20 @@
                 `;
                 colorsContainer.appendChild(div);
 
-                const sizesInput = div.querySelector('.color-sizes-input');
+                const sizeSelectorContainer = div.querySelector('.size-selector-container');
                 const stockContainer = div.querySelector('.stock-container');
-
-                const populateStockInputs = () => {
-                    const sizes = sizesInput.value.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
-                    stockContainer.innerHTML = ''; // Clear previous
-                    sizes.forEach(size => {
-                        const stockValue = (color.stockBySize && color.stockBySize[size] !== undefined) ? color.stockBySize[size] : 0;
-                        const stockDiv = document.createElement('div');
-                        stockDiv.className = 'flex items-center gap-2';
-                        stockDiv.innerHTML = `
-                            <label class="w-16">${size}:</label>
-                            <input type="number" class="stock-input w-24 rounded-md border-gray-300 text-sm" data-size="${size}" value="${stockValue}" min="0" placeholder="Stock">
-                        `;
-                        stockContainer.appendChild(stockDiv);
-                    });
-                };
                 
-                populateStockInputs();
-                sizesInput.addEventListener('input', populateStockInputs);
+                masterSizes.forEach(size => {
+                    const isSelected = availableSizesForColor.includes(size);
+                    const tag = document.createElement('span');
+                    tag.className = `size-tag text-sm font-medium px-3 py-1 rounded-full bg-gray-200 ${isSelected ? 'selected' : ''}`;
+                    tag.textContent = size;
+                    tag.dataset.size = size;
+                    if(isSelected) tag.dataset.stock = color.stockBySize[size];
+                    sizeSelectorContainer.appendChild(tag);
+                });
+
+                populateStockInputs(stockContainer, sizeSelectorContainer);
 
                 if (color.designs) {
                     color.designs.forEach(design => addDesignRow(div.querySelector('.designs-container'), design));
@@ -321,15 +339,27 @@
                 container.appendChild(designDiv);
             };
 
-            productModal.addEventListener('click', e => {
-                if (e.target.classList.contains('remove-color-btn')) {
-                    e.target.closest('.border.p-3').remove();
+            productModal.addEventListener('click', async e => {
+                if (e.target.classList.contains('remove-color-btn')) e.target.closest('.border.p-3').remove();
+                if (e.target.classList.contains('add-design-btn')) addDesignRow(e.target.previousElementSibling);
+                if (e.target.classList.contains('remove-design-btn')) e.target.parentElement.remove();
+                if (e.target.classList.contains('size-tag')) {
+                    e.target.classList.toggle('selected');
+                    const colorContainer = e.target.closest('.border.p-3');
+                    populateStockInputs(colorContainer.querySelector('.stock-container'), colorContainer.querySelector('.size-selector-container'));
                 }
-                if (e.target.classList.contains('add-design-btn')) {
-                    addDesignRow(e.target.previousElementSibling);
-                }
-                if (e.target.classList.contains('remove-design-btn')) {
-                    e.target.parentElement.remove();
+                if (e.target.classList.contains('add-new-size-btn')) {
+                    const input = e.target.previousElementSibling;
+                    const newSize = input.value.trim().toUpperCase();
+                    if (newSize && !masterSizes.includes(newSize)) {
+                        await setDoc(doc(db, sizesCollectionPath, newSize), {});
+                        input.value = '';
+                        // The onSnapshot listener will handle re-rendering the tags across all modals.
+                        setTimeout(() => openModal(products.find(p => p.id === document.getElementById('product-id').value)), 200);
+                    } else if (newSize) {
+                        alert(`Size "${newSize}" already exists.`);
+                        input.value = '';
+                    }
                 }
             });
 
@@ -340,7 +370,6 @@
                     const snapshot = await uploadBytes(storageRef, file);
                     return await getDownloadURL(snapshot.ref);
                 } catch (error) {
-                    console.error("Upload failed:", error);
                     alert("Image upload failed. Check console for details.");
                     throw error;
                 }
@@ -378,8 +407,8 @@
                         const designs = await Promise.all(designPromises);
                         
                         const stockBySize = {};
-                        const sizesForThisColor = colorDiv.querySelector('.color-sizes-input').value.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
-                        sizesForThisColor.forEach(size => {
+                        const selectedSizes = Array.from(colorDiv.querySelectorAll('.size-tag.selected')).map(tag => tag.dataset.size);
+                        selectedSizes.forEach(size => {
                             allUniqueSizes.add(size);
                             const stockInput = colorDiv.querySelector(`.stock-input[data-size="${size}"]`);
                             const stockValue = stockInput ? parseInt(stockInput.value, 10) : 0;
@@ -406,7 +435,6 @@
                     await setDoc(doc(db, productsCollectionPath, productId), productData);
                     closeModal();
                 } catch (error) {
-                    console.error("Error saving product:", error);
                     alert(`Error: ${error.message}`);
                 } finally {
                     saveButton.disabled = false;
@@ -426,7 +454,6 @@
                     }
                 }
             });
-
         });
     </script>
 </body>
