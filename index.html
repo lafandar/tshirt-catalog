@@ -217,7 +217,7 @@
     <!-- Firebase SDK and JavaScript Logic -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getFirestore, collection, onSnapshot, doc, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         
         document.addEventListener('DOMContentLoaded', () => {
@@ -719,19 +719,69 @@
             viewOrderBtn.addEventListener('click', openSummary);
             closeSummaryBtn.addEventListener('click', closeSummary);
 
-            whatsappBtn.addEventListener('click', () => {
+            whatsappBtn.addEventListener('click', async () => {
                 if (cart.length === 0) return;
                 
-                // Move cart to last order
-                localStorage.setItem(orderStorageKey, JSON.stringify(cart));
-                
-                // Empty the cart
-                cart = [];
-                updateCart();
-                
-                // Close the cart panel and open the summary
-                closeCart();
-                setTimeout(openSummary, 300); // Wait for cart to close
+                whatsappBtn.disabled = true;
+                whatsappBtn.innerHTML = `<span>Processing...</span>`;
+
+                try {
+                    await runTransaction(db, async (transaction) => {
+                        const productsInCart = {};
+                        cart.forEach(item => {
+                            if (!productsInCart[item.productId]) {
+                                productsInCart[item.productId] = [];
+                            }
+                            productsInCart[item.productId].push(item);
+                        });
+
+                        const productRefs = {};
+                        const productDocs = {};
+
+                        for (const productId in productsInCart) {
+                            const docRef = doc(db, productsCollectionPath, productId);
+                            productRefs[productId] = docRef;
+                            const productDoc = await transaction.get(docRef);
+                            if (!productDoc.exists()) throw new Error(`Product ${productId} not found!`);
+                            productDocs[productId] = productDoc.data();
+                        }
+
+                        for (const productId in productsInCart) {
+                            const items = productsInCart[productId];
+                            const productData = productDocs[productId];
+
+                            items.forEach(item => {
+                                const colorIndex = productData.colors.findIndex(c => c.name === item.color);
+                                if (colorIndex === -1) throw new Error(`Color ${item.color} not found for ${item.name}`);
+
+                                const currentStock = productData.colors[colorIndex].stockBySize[item.size];
+                                if (currentStock === undefined) throw new Error(`Size ${item.size} not found for ${item.name} (${item.color})`);
+                                
+                                const newStock = currentStock - item.quantity;
+                                if (newStock < 0) throw new Error(`Not enough stock for ${item.name} (${item.size}). Only ${currentStock} left.`);
+                                
+                                productData.colors[colorIndex].stockBySize[item.size] = newStock;
+                            });
+                            
+                            transaction.update(productRefs[productId], { colors: productData.colors });
+                        }
+                    });
+                    
+                    // If transaction succeeds:
+                    localStorage.setItem(orderStorageKey, JSON.stringify(cart));
+                    cart = [];
+                    updateCart();
+                    closeCart();
+                    setTimeout(openSummary, 300);
+                    showToast('Order placed successfully!');
+
+                } catch (e) {
+                    console.error("Order failed:", e);
+                    showToast(e.message || "Order failed. Stock may have changed.", true);
+                } finally {
+                    whatsappBtn.disabled = false;
+                    whatsappBtn.innerHTML = `<span>Review & Order</span>`;
+                }
             });
 
             confirmOrderBtn.addEventListener('click', () => {
