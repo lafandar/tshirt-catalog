@@ -3,396 +3,665 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>T-Shirt Brand Catalog</title>
+    <title>LAFANDAR | T-Shirt Catalogue</title>
+    
+    <!-- Official Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Custom CSS for animations and styling -->
     <style>
-        body { font-family: 'Inter', sans-serif; }
-        .modal { opacity: 0; visibility: hidden; transition: opacity 300ms ease-out, visibility 0s 300ms; }
-        .modal.is-open { opacity: 1; visibility: visible; transition: opacity 300ms ease-out; }
-        .modal-content { transform: scale(0.95); transition: transform 300ms ease-out; }
-        .modal.is-open .modal-content { transform: scale(1); }
-        .loader { border: 4px solid #f3f3f3; border-top: 4px solid #4f46e5; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .option-list::-webkit-scrollbar { width: 4px; }
-        .option-list::-webkit-scrollbar-track { background: #f1f1f1; }
-        .option-list::-webkit-scrollbar-thumb { background: #a0aec0; border-radius: 10px; }
-        .chevron-icon { transition: transform 0.2s ease-in-out; }
-        input[type="checkbox"]:disabled + span { color: #a0aec0; cursor: not-allowed; }
-        
-        /* Mobile-First Image Navigation Buttons */
-        .image-nav-btn {
-            position: absolute; top: 50%; transform: translateY(-50%);
-            background-color: rgba(0,0,0,0.4); color: white; border-radius: 9999px;
-            width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
-            border: none; cursor: pointer; opacity: 1; transition: opacity 0.2s;
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
-        /* Hide on desktop unless hovered */
-        @media (min-width: 1024px) {
-            .image-nav-btn {
-                opacity: 0;
-            }
-            .relative:hover .image-nav-btn {
-                opacity: 1;
-            }
+        .color-swatch {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .color-swatch:hover {
+            transform: scale(1.1);
+        }
+        .color-swatch.selected {
+            box-shadow: 0 0 0 3px #1e40af; /* A strong blue ring */
+        }
+        .size-btn.selected {
+            background-color: #1e3a8a; /* Darker blue */
+            color: white;
+            border-color: #1e3a8a;
+        }
+        .product-image {
+            transition: opacity 0.3s ease-in-out;
+        }
+        .fade-out {
+            opacity: 0;
+        }
+        .toast {
+            visibility: hidden;
+            opacity: 0;
+            transform: translateY(20px);
+            transition: all 0.3s ease-in-out;
+        }
+        .toast.show {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .cart-item-enter {
+            opacity: 0;
+            transform: translateX(-20px);
+            transition: all 0.3s ease-out;
+        }
+        .cart-item-enter-active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .design-option {
+            transition: transform 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        .design-option:hover {
+            transform: scale(1.05);
+        }
+        .design-option .check-overlay {
+            transition: opacity 0.2s ease-in-out;
+        }
+        .design-option.selected .check-overlay {
+            opacity: 1;
+        }
+        .design-option.selected {
+            transform: scale(1.05);
+        }
+        #design-modal-content {
+            transform: scale(0.95);
+            transition: transform 0.2s ease-out;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800">
 
-    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
-        <header class="text-center mb-8">
-            <h1 class="text-3xl sm:text-4xl font-bold text-gray-900">LAFANDAR T-Shirt Catalog</h1>
-            <p class="text-base sm:text-lg text-gray-600 mt-2">Select multiple options for easy bulk ordering.</p>
-        </header>
-
-        <div id="product-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
-            <div id="loading" class="col-span-full flex justify-center items-center h-64"><div class="loader"></div></div>
-        </div>
-
-        <div class="fixed bottom-6 right-6 z-40">
-            <button id="view-cart-button" class="bg-indigo-600 text-white rounded-full p-4 shadow-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-transform transform hover:scale-110">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                <span id="cart-count" class="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">0</span>
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-40">
+        <div class="container mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+            <h1 class="text-xl sm:text-3xl font-bold text-gray-900 tracking-tight">
+                LAFANDAR CATALOGUE
+            </h1>
+            <button id="cart-button" class="relative">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-600 hover:text-gray-900 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                <span id="cart-count" class="absolute -top-2 -right-2 bg-blue-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center font-bold">0</span>
             </button>
         </div>
-    </div>
+    </header>
 
-    <!-- Modals and Toast -->
-    <div id="cart-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-lg mx-auto">
-            <div class="p-4 border-b flex justify-between items-center"><h2 class="text-2xl font-semibold">Your Order</h2><button class="close-modal-btn text-gray-500 hover:text-gray-800 text-3xl leading-none" aria-label="Close">&times;</button></div>
-            <div id="cart-items" class="p-6 max-h-80 overflow-y-auto"></div>
-            <div class="p-4 bg-gray-50 border-t flex justify-between items-center">
-                <div><p class="text-lg font-semibold">Total: <span id="cart-total">₹0.00</span></p><button id="clear-cart-btn" class="text-xs text-red-500 hover:text-red-700 font-medium mt-1" style="display: none;">Clear Cart</button></div>
-                <button id="checkout-button" class="bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 transition">Proceed to Checkout</button>
+    <!-- Main Content -->
+    <main id="product-grid" class="container mx-auto px-4 sm:px-6 py-8 sm:py-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
+        <div id="grid-loader" class="col-span-full flex flex-col items-center justify-center min-h-[50vh]">
+            <div class="loader"></div>
+            <p class="mt-4 text-gray-500">Loading Latest Collection...</p>
+        </div>
+    </main>
+    
+    <!-- Shopping Cart Modal -->
+    <div id="cart-modal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex justify-end">
+        <div id="cart-panel" class="w-full max-w-md bg-white h-full shadow-2xl transform translate-x-full transition-transform duration-300 ease-in-out">
+            <div class="flex flex-col h-full">
+                <!-- Cart Header -->
+                <div class="flex justify-between items-center p-4 sm:p-6 border-b">
+                    <h2 class="text-xl sm:text-2xl font-semibold">Your Cart</h2>
+                    <button id="close-cart-btn" class="text-gray-500 hover:text-gray-800">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <!-- Cart Items -->
+                <div id="cart-items-container" class="flex-grow p-4 sm:p-6 overflow-y-auto">
+                    <!-- Cart items will be injected here -->
+                    <div id="empty-cart-message" class="text-center text-gray-500 mt-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="mx-auto h-16 w-16 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        <p class="mt-4 text-lg">Your cart is empty.</p>
+                        <p class="text-sm">Looks like you haven't added anything yet.</p>
+                    </div>
+                </div>
+
+                <!-- Cart Footer -->
+                <div class="p-4 sm:p-6 border-t bg-gray-50">
+                    <div class="flex justify-between items-center mb-4">
+                        <span class="text-lg font-medium">Subtotal</span>
+                        <span id="cart-subtotal" class="text-xl font-bold">₹0.00</span>
+                    </div>
+                    <button id="whatsapp-btn" class="w-full bg-green-500 text-white py-3 rounded-lg font-semibold hover:bg-green-600 transition-colors disabled:bg-gray-400 flex items-center justify-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 24 24" fill="currentColor"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.487 5.235 3.487 8.413 0 6.557-5.338 11.892-11.894 11.892-1.99 0-3.903-.52-5.687-1.475L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 4.315 1.731 6.086l.287.468-1.911 5.462 5.547-1.83z"/></svg>
+                        <span>Order on WhatsApp</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-    <div id="details-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-        <div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-md mx-auto"><div class="p-4 border-b flex justify-between items-center"><h2 class="text-2xl font-semibold">Your Details</h2><button class="close-modal-btn text-gray-500 hover:text-gray-800 text-3xl leading-none" aria-label="Close">&times;</button></div><div class="p-6"><form id="owner-details-form"><div class="mb-4"><label for="shop-name" class="block text-sm font-medium text-gray-700 mb-1">Shop Name</label><input type="text" id="shop-name" name="shopName" class="w-full p-2 border border-gray-300 rounded-md" required></div><div class="mb-4"><label for="owner-name" class="block text-sm font-medium text-gray-700 mb-1">Your Name</label><input type="text" id="owner-name" name="ownerName" class="w-full p-2 border border-gray-300 rounded-md" required></div><div class="mb-4"><label for="shop-address" class="block text-sm font-medium text-gray-700 mb-1">Shop Address</label><textarea id="shop-address" name="shopAddress" rows="3" class="w-full p-2 border border-gray-300 rounded-md" required></textarea></div></form></div><div class="p-4 bg-gray-50 border-t flex justify-end"><button id="send-whatsapp-button" class="bg-green-500 text-white font-bold py-2 px-6 rounded-lg hover:bg-green-600 transition">Confirm & Send Order</button></div></div>
-    </div>
-    <div id="toast" class="fixed top-5 right-5 bg-green-500 text-white py-2 px-4 rounded-lg shadow-md opacity-0 transition-opacity duration-300 z-50">Item(s) added to cart!</div>
-    
-    <!-- Updated Image Viewer Modal -->
-    <div id="image-viewer-modal" class="modal fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
-        <div class="relative max-w-4xl w-full max-h-full flex items-center justify-center">
-            <button id="close-image-viewer" class="absolute -top-2 -right-2 text-white bg-black bg-opacity-50 rounded-full h-8 w-8 flex items-center justify-center text-2xl z-20" aria-label="Close">&times;</button>
-            <button id="viewer-prev-btn" class="image-nav-btn left-2 lg:-left-12 z-10" style="opacity:1;">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg>
+
+
+    <!-- Design Preview Modal -->
+    <div id="design-modal" class="fixed inset-0 bg-black bg-opacity-75 z-[60] hidden items-center justify-center p-4" role="dialog" aria-modal="true">
+        <div id="design-modal-content" class="bg-white rounded-lg shadow-2xl p-4 relative max-w-lg w-full">
+            <button id="close-design-btn" class="absolute -top-4 -right-4 bg-white rounded-full p-2 text-gray-700 hover:text-gray-900 shadow-lg focus:outline-none focus:ring-2 focus:ring-blue-500 z-10">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin-round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
-            <img id="full-view-image" src="" alt="Full view" class="max-w-full max-h-screen object-contain rounded-lg">
-            <button id="viewer-next-btn" class="image-nav-btn right-2 lg:-right-12 z-10" style="opacity:1;">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
-            </button>
+            <img id="design-modal-image" src="" alt="Design Preview" class="w-full h-auto max-h-[80vh] object-contain rounded">
         </div>
     </div>
 
-    <!-- Custom Alert & Confirm Modals -->
-    <div id="alert-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"><div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-sm mx-auto"><div class="p-4 border-b"><h2 id="alert-title" class="text-xl font-semibold">Notice</h2></div><div id="alert-message" class="p-6"></div><div class="p-4 bg-gray-50 border-t flex justify-end"><button id="alert-ok-btn" class="bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-indigo-700 transition">OK</button></div></div></div>
-    <div id="confirm-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50"><div class="modal-content bg-white rounded-lg shadow-xl w-full max-w-sm mx-auto"><div class="p-4 border-b"><h2 id="confirm-title" class="text-xl font-semibold">Confirmation</h2></div><div id="confirm-message" class="p-6"></div><div class="p-4 bg-gray-50 border-t flex justify-end space-x-2"><button id="confirm-cancel-btn" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg hover:bg-gray-300">Cancel</button><button id="confirm-ok-btn" class="bg-red-500 text-white font-bold py-2 px-4 rounded-lg hover:bg-red-600">Confirm</button></div></div></div>
 
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+    <!-- Toast Notification -->
+    <div id="toast-notification" class="toast fixed bottom-5 right-5 bg-green-600 text-white py-3 px-6 rounded-lg shadow-lg flex items-center z-[100]">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+        <span id="toast-message">Item added to cart!</span>
+    </div>
 
-    <script>
-        const firebaseConfig = {
-          apiKey: "AIzaSyAuO5iyXCHYZS9nS2BViu-259sb2CUSZjo",
-          authDomain: "tshirt-catalog-v2.firebaseapp.com",
-          projectId: "tshirt-catalog-v2",
-          storageBucket: "tshirt-catalog-v2.firebasestorage.app",
-          messagingSenderId: "428518895959",
-          appId: "1:428518895959:web:8e1fccd4d6f1e2c8b00e12"
-        };
-
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-
+    <!-- Firebase SDK and JavaScript Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, collection, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        
         document.addEventListener('DOMContentLoaded', () => {
-            const yourWhatsAppNumber = '918210746035'; 
+            
+            // --- CONFIGURATION ---
+            const whatsAppNumber = '918210746035'; // Your WhatsApp number
+            const cartStorageKey = 'lafandar_cart';
+            const firebaseConfig = {
+                apiKey: "AIzaSyAJsKAoQYNmVeAbAREpTRnpnvKyA9fauow",
+                authDomain: "lafandar-catalogue.firebaseapp.com",
+                projectId: "lafandar-catalogue",
+                storageBucket: "lafandar-catalogue.firebasestorage.app",
+                messagingSenderId: "776396917041",
+                appId: "1:776396917041:web:2f40680e2312ed09478810"
+            };
+            const appId = 'lafandar-app';
+            const productsCollectionPath = `/artifacts/${appId}/public/data/products`;
+
+            // --- FIREBASE INITIALIZATION ---
+            const app = initializeApp(firebaseConfig);
+            const db = getFirestore(app);
+            const auth = getAuth(app);
+            
+            // --- STATE ---
             let products = [];
-            let cart = {}; 
-            let toastTimer;
-            let confirmCallback = null;
-            let viewerState = { images: [], currentIndex: 0 };
-            const preloadedUrls = new Set();
+            const savedCart = localStorage.getItem(cartStorageKey);
+            let cart = savedCart ? JSON.parse(savedCart) : [];
 
-            function preloadImages(urls) {
-                if (!urls) return;
-                urls.forEach(url => {
-                    if (!preloadedUrls.has(url)) {
-                        const img = new Image();
-                        img.src = url;
-                        preloadedUrls.add(url);
-                    }
-                });
-            }
-
-            function loadCart() { const savedCart = localStorage.getItem('tshirtCart'); if (savedCart) cart = JSON.parse(savedCart); }
-            function saveCart() { localStorage.setItem('tshirtCart', JSON.stringify(cart)); }
-
+            // --- DOM ELEMENTS ---
             const productGrid = document.getElementById('product-grid');
-            const loadingSpinner = document.getElementById('loading');
+            const gridLoader = document.getElementById('grid-loader');
+            const cartButton = document.getElementById('cart-button');
             const cartModal = document.getElementById('cart-modal');
-            const detailsModal = document.getElementById('details-modal');
-            const imageViewerModal = document.getElementById('image-viewer-modal');
-            const alertModal = document.getElementById('alert-modal');
-            const confirmModal = document.getElementById('confirm-modal');
-            const fullViewImage = document.getElementById('full-view-image');
-            const closeImageViewerBtn = document.getElementById('close-image-viewer');
-            const viewerPrevBtn = document.getElementById('viewer-prev-btn');
-            const viewerNextBtn = document.getElementById('viewer-next-btn');
+            const cartPanel = document.getElementById('cart-panel');
+            const closeCartBtn = document.getElementById('close-cart-btn');
+            const cartCountEl = document.getElementById('cart-count');
+            const cartItemsContainer = document.getElementById('cart-items-container');
+            const cartSubtotalEl = document.getElementById('cart-subtotal');
+            const emptyCartMessage = document.getElementById('empty-cart-message');
+            const toast = document.getElementById('toast-notification');
+            const toastMessage = document.getElementById('toast-message');
+            const designModal = document.getElementById('design-modal');
+            const designModalContent = document.getElementById('design-modal-content');
+            const designModalImage = document.getElementById('design-modal-image');
+            const closeDesignBtn = document.getElementById('close-design-btn');
+            const whatsappBtn = document.getElementById('whatsapp-btn');
 
-            const viewCartButton = document.getElementById('view-cart-button');
-            const checkoutButton = document.getElementById('checkout-button');
-            const sendWhatsappButton = document.getElementById('send-whatsapp-button');
-            const cartItemsContainer = document.getElementById('cart-items');
-            const cartCount = document.getElementById('cart-count');
-            const cartTotal = document.getElementById('cart-total');
-            const clearCartBtn = document.getElementById('clear-cart-btn');
-            const toast = document.getElementById('toast');
-            const ownerDetailsForm = document.getElementById('owner-details-form');
-
-            function showAlert(title, message) {
-                document.getElementById('alert-title').textContent = title;
-                document.getElementById('alert-message').innerHTML = message;
-                toggleModal(alertModal, true);
-            }
-
-            function showConfirm(title, message, onConfirm) {
-                document.getElementById('confirm-title').textContent = title;
-                document.getElementById('confirm-message').innerHTML = message;
-                confirmCallback = onConfirm;
-                toggleModal(confirmModal, true);
-            }
-
-            document.getElementById('alert-ok-btn').addEventListener('click', () => toggleModal(alertModal, false));
-            document.getElementById('confirm-ok-btn').addEventListener('click', () => {
-                if (confirmCallback) confirmCallback();
-                toggleModal(confirmModal, false);
+            onAuthStateChanged(auth, user => {
+                if (user) {
+                    onSnapshot(collection(db, productsCollectionPath), (snapshot) => {
+                        products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        renderProducts();
+                        updateStockDisplay(); // Update stock based on cart after products load
+                    });
+                } else {
+                    signInAnonymously(auth).catch(error => console.error("Anonymous sign-in failed:", error));
+                }
             });
-            document.getElementById('confirm-cancel-btn').addEventListener('click', () => toggleModal(confirmModal, false));
 
-            async function fetchProducts() {
-                try {
-                    const snapshot = await db.collection('products').orderBy("name").get();
-                    if (snapshot.empty) { productGrid.innerHTML = '<p class="col-span-full text-center text-gray-500">No designs have been added yet.</p>'; return; }
-                    snapshot.forEach(doc => products.push({ id: doc.id, ...doc.data() }));
-                    renderProducts();
-                } catch (error) { console.error("Error fetching products: ", error); productGrid.innerHTML = '<p class="col-span-full text-center text-red-500">Could not load designs.</p>'; } 
-                finally { if (loadingSpinner) loadingSpinner.style.display = 'none'; }
-            }
 
-            function renderProducts() {
-                productGrid.innerHTML = '';
-                products.forEach(product => {
-                    const card = document.createElement('div');
-                    card.className = 'bg-white rounded-lg shadow-md overflow-hidden flex flex-col';
-                    card.dataset.productId = product.id;
-                    
-                    const hasVariants = product.variants && Object.keys(product.variants).length > 0;
-                    
-                    const createCollapsibleCheckboxList = (title, items, type, isVariant = false) => {
-                        let checkboxHTML; let gridClass = 'grid-cols-2';
-                        if (isVariant) {
-                            checkboxHTML = Object.keys(items).map(name => `<label class="flex items-center justify-between text-sm p-1 rounded hover:bg-gray-100"><span class="flex items-center space-x-2"><input type="checkbox" class="form-checkbox h-4 w-4 text-indigo-600 rounded" data-type="variant" value="${name}"><span>${name}</span></span><span class="font-medium text-gray-600">₹${items[name]}</span></label>`).join('');
-                            gridClass = 'flex flex-col gap-1';
-                        } else {
-                            if (type === 'size') gridClass = 'grid-cols-3';
-                            checkboxHTML = items.map(item => `<label class="flex items-center space-x-2 text-sm"><input type="checkbox" class="form-checkbox h-4 w-4 text-indigo-600 rounded" data-type="${type}" value="${item}"><span>${item}</span></label>`).join('');
-                        }
-                        return `<div class="border-t"><button type="button" class="collapsible-toggle flex justify-between items-center w-full py-2 text-sm font-semibold text-left"><span>${title}</span><svg class="chevron-icon w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg></button><div class="collapsible-content hidden pl-2 pb-2"><div class="option-list ${gridClass} gap-1">${checkboxHTML}</div></div></div>`;
-                    };
-
-                    const variantSection = hasVariants ? createCollapsibleCheckboxList('Category', product.variants, 'variant', true) : '<p class="text-sm text-gray-500 p-2">Not Available</p>';
-                    const sizeSection = createCollapsibleCheckboxList('Size', product.sizes, 'size');
-                    const colorSection = createCollapsibleCheckboxList('Color', product.colors, 'color');
-                    const mainImage = product.imageUrls && product.imageUrls.length > 0 ? product.imageUrls[0] : 'https://placehold.co/400x500/cccccc/ffffff?text=Image+Not+Found';
-                    const hasMultipleImages = product.imageUrls && product.imageUrls.length > 1;
-
-                    card.innerHTML = `
-                        <div class="relative" data-image-index="0">
-                           <img src="${mainImage}" alt="${product.name}" loading="lazy" class="product-image w-full h-64 object-cover cursor-pointer" onerror="this.onerror=null;this.src='https://placehold.co/400x500/cccccc/ffffff?text=Image+Not+Found';">
-                           ${hasMultipleImages ? `<button class="image-nav-btn card-prev-btn left-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" /></svg></button><button class="image-nav-btn card-next-btn right-2"><svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg></button>` : ''}
+            // --- HELPERS ---
+            const generateSizeHTML = (product, colorData) => {
+                return product.sizes.map(size => {
+                    const stock = colorData.stockBySize?.[size] !== undefined ? colorData.stockBySize[size] : 0;
+                    return `
+                        <div class="size-container flex items-center justify-between gap-2">
+                            <button class="size-btn border-2 border-gray-300 rounded-md py-2 font-semibold text-sm transition-colors w-14 text-center hover:bg-gray-200"
+                                    data-size="${size}">
+                                ${size}
+                            </button>
+                            <span class="stock-display text-xs w-16 text-center text-gray-500" data-size="${size}">
+                                ${stock} left
+                            </span>
+                            <input type="number" min="1" value="1" class="quantity-input w-16 border-gray-300 rounded-md text-center text-sm p-1" placeholder="Qty">
                         </div>
-                        <div class="p-4 flex flex-col flex-grow">
-                            <h3 class="text-lg font-semibold mb-2">${product.name}</h3>
-                            <div class="space-y-1 mt-auto pt-2">${variantSection}${sizeSection}${colorSection}</div>
-                            <p class="stock-display text-center text-sm font-medium text-indigo-600 h-5 mt-2"></p>
-                            <div class="flex items-center gap-2 border-t pt-3 mt-3">
-                                <input type="number" min="1" value="1" class="quantity-input w-16 p-2 border border-gray-300 rounded-md text-center">
-                                <button class="add-to-cart-btn flex-1 bg-indigo-500 text-white font-semibold py-2 px-3 text-sm rounded-md hover:bg-indigo-600 transition whitespace-nowrap">Add Selected</button>
+                    `;
+                }).join('');
+            };
+
+            // --- RENDER PRODUCTS ---
+            const renderProducts = () => {
+                if (gridLoader) gridLoader.remove();
+                productGrid.innerHTML = '';
+                if (products.length === 0) {
+                     productGrid.innerHTML = `<p class="col-span-full text-center text-gray-500">No products found. The owner might be adding new stock!</p>`;
+                     return;
+                }
+                products.forEach(product => {
+                    const productCard = document.createElement('div');
+                    productCard.className = 'bg-white rounded-lg shadow-lg overflow-hidden flex flex-col';
+                    productCard.dataset.productId = product.id;
+
+                    const colorSwatches = product.colors.map((color, index) => `
+                        <button class="color-swatch w-8 h-8 rounded-full border-2 border-white ring-1 ring-gray-300 ${index === 0 ? 'selected' : ''}" 
+                                style="background-color: ${color.hex};" 
+                                data-color="${color.name}"
+                                data-image="${color.image}"
+                                title="${color.name}">
+                        </button>
+                    `).join('');
+
+                    const sizeButtons = generateSizeHTML(product, product.colors[0]);
+
+                    productCard.innerHTML = `
+                        <div class="relative">
+                            <img src="${product.colors[0].image}" alt="${product.name}" class="product-image w-full h-80 sm:h-96 object-cover">
+                        </div>
+                        <div class="p-4 sm:p-6 flex-grow flex flex-col">
+                            <h2 class="text-xl font-bold mb-2">${product.name}</h2>
+                            <p class="text-gray-600 text-sm mb-4 flex-grow">${product.description}</p>
+                            
+                            <div class="mb-4">
+                                <h3 class="text-sm font-semibold mb-2 text-gray-700">Color</h3>
+                                <div class="flex items-center space-x-2">
+                                    ${colorSwatches}
+                                </div>
+                            </div>
+                            
+                            <div class="mb-6">
+                                <div class="flex justify-between items-baseline mb-2 text-xs sm:text-sm">
+                                    <h3 class="font-semibold text-gray-700 w-14 text-center">Size</h3>
+                                    <h3 class="font-semibold text-gray-700 w-16 text-center">Stock</h3>
+                                    <h3 class="font-semibold text-gray-700 w-16 text-center">Quantity</h3>
+                                </div>
+                                <div class="size-list flex flex-col gap-2">
+                                    ${sizeButtons}
+                                </div>
+                            </div>
+
+                            <div class="design-section hidden mb-6">
+                                <h3 class="text-sm font-semibold mb-2 text-gray-700">Choose a Design</h3>
+                                <div class="design-options flex flex-wrap gap-3"></div>
+                            </div>
+                            
+                            <div class="flex justify-between items-center mt-auto">
+                                <span class="text-2xl font-bold">₹${product.price}</span>
+                                <button class="add-to-cart-btn bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 transition-colors transform hover:scale-105">
+                                    Add to Cart
+                                </button>
                             </div>
                         </div>
                     `;
-                    productGrid.appendChild(card);
+                    productGrid.appendChild(productCard);
                     
-                    addSwipeListeners(card); // Add swipe functionality for product cards
-                    const prevBtn = card.querySelector('.card-prev-btn');
-                    const nextBtn = card.querySelector('.card-next-btn');
-                    if (prevBtn && nextBtn) {
-                        const changeCardImage = (isNext) => {
-                            const imageContainer = card.querySelector('.relative[data-image-index]');
-                            const img = card.querySelector('.product-image');
-                            const urls = product.imageUrls;
-                            if (!urls || urls.length < 2) return;
-                            let currentIndex = parseInt(imageContainer.dataset.imageIndex, 10);
-                            if (isNext) { currentIndex = (currentIndex + 1) % urls.length; } 
-                            else { currentIndex = (currentIndex - 1 + urls.length) % urls.length; }
-                            img.src = urls[currentIndex];
-                            imageContainer.dataset.imageIndex = currentIndex;
-                        };
-                        prevBtn.addEventListener('click', (e) => { e.stopPropagation(); changeCardImage(false); });
-                        nextBtn.addEventListener('click', (e) => { e.stopPropagation(); changeCardImage(true); });
+                    const firstColorData = product.colors[0];
+                    const designSection = productCard.querySelector('.design-section');
+                    const designOptionsContainer = productCard.querySelector('.design-options');
+                    if (firstColorData && firstColorData.designs && firstColorData.designs.length > 0) {
+                        designOptionsContainer.innerHTML = firstColorData.designs.map(design => `
+                            <button class="design-option relative p-1 border-2 border-transparent rounded-md text-center" data-design-id="${design.id}" data-design-name="${design.name}">
+                                <div class="check-overlay pointer-events-none absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-md transition-opacity opacity-0">
+                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <img src="${design.image}" alt="${design.name}" class="w-16 h-16 object-cover rounded-sm pointer-events-none mx-auto">
+                                <span class="text-xs text-gray-600 pointer-events-none block mt-1">${design.name}</span>
+                            </button>
+                        `).join('');
+                        designSection.classList.remove('hidden');
                     }
                 });
-            }
-            
-            function addSwipeListeners(card) {
-                const imageContainer = card.querySelector('.relative[data-image-index]');
-                if (!imageContainer) return;
-                let touchStartX = 0; let touchEndX = 0;
-                imageContainer.addEventListener('touchstart', (e) => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
-                imageContainer.addEventListener('touchend', (e) => {
-                    touchEndX = e.changedTouches[0].screenX;
-                    handleSwipe(card, imageContainer, touchStartX, touchEndX);
-                }, { passive: true });
-            }
+            };
 
-            function handleSwipe(card, imageContainer, startX, endX) {
-                const product = products.find(p => p.id === card.dataset.productId);
-                if (!product || !product.imageUrls || product.imageUrls.length < 2) return;
-                let currentIndex = parseInt(imageContainer.dataset.imageIndex, 10);
-                if (endX < startX - 50) { currentIndex = (currentIndex + 1) % product.imageUrls.length; } 
-                else if (endX > startX + 50) { currentIndex = (currentIndex - 1 + product.imageUrls.length) % product.imageUrls.length; } 
-                else { return; }
-                const img = card.querySelector('.product-image');
-                img.src = product.imageUrls[currentIndex];
-                imageContainer.dataset.imageIndex = currentIndex;
-            }
+            // --- DYNAMIC STOCK DISPLAY LOGIC ---
+            const updateStockDisplay = () => {
+                document.querySelectorAll('.bg-white[data-product-id]').forEach(card => {
+                    const productId = card.dataset.productId;
+                    const product = products.find(p => p.id === productId);
+                    if (!product) return;
 
-            function addToCart(productId, category, quantity, size, color) {
-                const product = products.find(p => p.id == productId); if (!product) return;
-                const price = product.variants[category] || 0;
-                const cartItemId = `${productId}-${category}-${size}-${color}`;
-                if (cart[cartItemId]) { cart[cartItemId].quantity += quantity; } 
-                else { cart[cartItemId] = { name: product.name, category, quantity, size, color, price }; }
-            }
-            
-            function updateStockDisplay(card) {
-                const productId = card.dataset.productId; const product = products.find(p => p.id === productId); if (!product) return;
-                const stockInfo = product.stockInfo || {}; const stockDisplay = card.querySelector('.stock-display');
-                const getSelected = (type) => Array.from(card.querySelectorAll(`input[data-type="${type}"]:checked`)).map(cb => cb.value);
-                const selectedVariants = getSelected('variant'); const selectedSizes = getSelected('size'); const selectedColors = getSelected('color');
-                if (selectedVariants.length === 1 && selectedSizes.length === 1 && selectedColors.length === 1) {
-                    const stockKey = `${selectedVariants[0]}_${selectedSizes[0]}_${selectedColors[0]}`;
-                    const cartItemId = `${productId}-${selectedVariants[0]}-${selectedSizes[0]}_${selectedColors[0]}`;
-                    const totalStock = stockInfo[stockKey] || 0;
-                    const quantityInCart = cart[cartItemId] ? cart[cartItemId].quantity : 0;
-                    const displayStock = totalStock - quantityInCart;
-                    stockDisplay.textContent = displayStock > 0 ? `${displayStock} in stock` : 'Out of stock';
-                } else { stockDisplay.textContent = ''; }
-            }
+                    const selectedColorEl = card.querySelector('.color-swatch.selected');
+                    if (!selectedColorEl) return;
+                    
+                    const selectedColorName = selectedColorEl.dataset.color;
+                    const colorData = product.colors.find(c => c.name === selectedColorName);
+                    if (!colorData) return;
 
-            productGrid.addEventListener('mouseover', (e) => {
-                const card = e.target.closest('[data-product-id]');
-                if (card) { const product = products.find(p => p.id === card.dataset.productId); if (product) preloadImages(product.imageUrls); }
-            });
+                    card.querySelectorAll('.size-container').forEach(container => {
+                        const size = container.querySelector('.size-btn').dataset.size;
+                        const originalStock = colorData.stockBySize?.[size] || 0;
+                        
+                        const quantityInCart = cart.reduce((total, item) => {
+                            if(item.productId === productId && item.color === selectedColorName && item.size === size) {
+                                return total + item.quantity;
+                            }
+                            return total;
+                        }, 0);
+                        
+                        const remainingStock = originalStock - quantityInCart;
+                        
+                        const stockDisplayEl = container.querySelector('.stock-display');
+                        const sizeBtn = container.querySelector('.size-btn');
+                        const quantityInput = container.querySelector('.quantity-input');
 
-            productGrid.addEventListener('click', (e) => {
-                const card = e.target.closest('[data-product-id]'); if (!card) return;
-                if (e.target.classList.contains('product-image')) {
-                    const product = products.find(p => p.id === card.dataset.productId);
-                    const imageContainer = card.querySelector('.relative[data-image-index]');
-                    if (product.imageUrls && product.imageUrls.length > 0) {
-                        preloadImages(product.imageUrls);
-                        viewerState.images = product.imageUrls;
-                        viewerState.currentIndex = parseInt(imageContainer.dataset.imageIndex, 10);
-                        updateImageViewer();
-                        toggleModal(imageViewerModal, true);
-                    }
-                } else if (e.target.classList.contains('add-to-cart-btn')) {
-                    const product = products.find(p => p.id === card.dataset.productId);
-                    const cardBody = e.target.closest('.p-4');
-                    const quantity = parseInt(cardBody.querySelector('.quantity-input').value, 10);
-                    const getSelected = (type) => Array.from(cardBody.querySelectorAll(`input[data-type="${type}"]:checked`)).map(cb => cb.value);
-                    const selectedVariants = getSelected('variant'); const selectedSizes = getSelected('size'); const selectedColors = getSelected('color');
-                    if (isNaN(quantity) || quantity < 1) { showAlert("Invalid Quantity", "Please enter a valid quantity."); return; }
-                    if (selectedVariants.length === 0 || selectedSizes.length === 0 || selectedColors.length === 0) { showAlert("Selection Missing", "Please select at least one option from each category."); return; }
-                    let itemsAdded = 0; let unavailableItems = [];
-                    selectedVariants.forEach(variant => {
-                        selectedSizes.forEach(size => {
-                            selectedColors.forEach(color => {
-                                const stockKey = `${variant}_${size}_${color}`; const cartItemId = `${product.id}-${variant}-${size}-${color}`;
-                                const availableStock = (product.stockInfo || {})[stockKey] || 0;
-                                const quantityInCart = cart[cartItemId] ? cart[cartItemId].quantity : 0;
-                                if (availableStock >= quantity + quantityInCart) { addToCart(product.id, variant, quantity, size, color); itemsAdded++; } 
-                                else { unavailableItems.push(`- ${product.name} (${variant}, ${size}, ${color}) - Only ${Math.max(0, availableStock - quantityInCart)} left`); }
-                            });
-                        });
+                        stockDisplayEl.textContent = remainingStock > 0 ? `${remainingStock} left` : 'Out of Stock';
+                        stockDisplayEl.classList.toggle('text-red-500', remainingStock <= 0);
+                        stockDisplayEl.classList.toggle('font-semibold', remainingStock <= 0);
+                        
+                        sizeBtn.disabled = remainingStock <= 0;
+                        quantityInput.disabled = remainingStock <= 0;
+                        quantityInput.max = remainingStock;
+                        sizeBtn.classList.toggle('bg-gray-100', remainingStock <= 0);
+                        sizeBtn.classList.toggle('text-gray-400', remainingStock <= 0);
+                        sizeBtn.classList.toggle('cursor-not-allowed', remainingStock <= 0);
                     });
-                    if (itemsAdded > 0) { updateCart(); showToast(); updateStockDisplay(card); }
-                    if (unavailableItems.length > 0) { showAlert("Some Items Unavailable", "Insufficient stock for:<br><br><div class='text-left text-sm'>" + unavailableItems.join('<br>') + "</div>"); }
+                });
+            };
+
+            // --- EVENT LISTENERS ---
+            productGrid.addEventListener('click', (e) => {
+                const card = e.target.closest('.bg-white');
+                if (!card) return;
+                const productId = card.dataset.productId;
+                const product = products.find(p => p.id === productId);
+
+                // Handle color selection
+                if (e.target.classList.contains('color-swatch')) {
+                    const newImage = e.target.dataset.image;
+                    const productImage = card.querySelector('.product-image');
+                    
+                    productImage.classList.add('fade-out');
+                    setTimeout(() => {
+                        productImage.src = newImage;
+                        productImage.classList.remove('fade-out');
+                    }, 300);
+
+                    card.querySelectorAll('.color-swatch').forEach(swatch => swatch.classList.remove('selected'));
+                    e.target.classList.add('selected');
+
+                    const selectedColorName = e.target.dataset.color;
+                    const selectedColorData = product.colors.find(c => c.name === selectedColorName);
+
+                    card.querySelector('.size-list').innerHTML = generateSizeHTML(product, selectedColorData);
+                    updateStockDisplay(); // Update stock for new color
+
+                    const designSection = card.querySelector('.design-section');
+                    const designOptionsContainer = card.querySelector('.design-options');
+                    card.querySelectorAll('.design-option').forEach(btn => btn.classList.remove('selected'));
+
+                    if (selectedColorData && selectedColorData.designs && selectedColorData.designs.length > 0) {
+                        designOptionsContainer.innerHTML = selectedColorData.designs.map(design => `
+                            <button class="design-option relative p-1 border-2 border-transparent rounded-md text-center" data-design-id="${design.id}" data-design-name="${design.name}">
+                                <div class="check-overlay pointer-events-none absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center rounded-md transition-opacity opacity-0">
+                                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                                </div>
+                                <img src="${design.image}" alt="${design.name}" class="w-16 h-16 object-cover rounded-sm pointer-events-none mx-auto">
+                                <span class="text-xs text-gray-600 pointer-events-none block mt-1">${design.name}</span>
+                            </button>
+                        `).join('');
+                        designSection.classList.remove('hidden');
+                    } else {
+                        designOptionsContainer.innerHTML = '';
+                        designSection.classList.add('hidden');
+                    }
                 }
-                const toggle = e.target.closest('.collapsible-toggle');
-                if (toggle) { toggle.nextElementSibling.classList.toggle('hidden'); toggle.querySelector('.chevron-icon').classList.toggle('rotate-180'); }
+
+                // Handle size selection
+                if (e.target.classList.contains('size-btn')) {
+                    e.target.classList.toggle('selected');
+                }
+
+                // Handle design selection
+                if (e.target.closest('.design-option')) {
+                    const designButton = e.target.closest('.design-option');
+                    const designImageEl = designButton.querySelector('img');
+                    if(designImageEl) openDesignModal(designImageEl.src);
+                    
+                    card.querySelectorAll('.design-option').forEach(btn => btn.classList.remove('selected'));
+                    designButton.classList.add('selected');
+                }
+                
+                // Handle Add to Cart
+                if (e.target.classList.contains('add-to-cart-btn')) {
+                    const selectedColorEl = card.querySelector('.color-swatch.selected');
+                    const selectedSizeNodes = card.querySelectorAll('.size-btn.selected');
+
+                    if (!selectedColorEl || selectedSizeNodes.length === 0) {
+                        showToast('Please select a color and at least one size.', true);
+                        return;
+                    }
+                    
+                    const designSection = card.querySelector('.design-section');
+                    let itemDetails = {};
+
+                    if (!designSection.classList.contains('hidden')) {
+                        const selectedDesignEl = card.querySelector('.design-option.selected');
+                        if (!selectedDesignEl) {
+                            showToast('Please select a design.', true);
+                            return;
+                        }
+                        itemDetails.designId = selectedDesignEl.dataset.designId;
+                        itemDetails.designName = selectedDesignEl.dataset.designName;
+                    }
+
+                    let totalQuantityAdded = 0;
+                    let stockError = false;
+
+                    selectedSizeNodes.forEach(sizeNode => {
+                        if (stockError) return;
+                        const size = sizeNode.dataset.size;
+                        const quantityInput = sizeNode.parentElement.querySelector('.quantity-input');
+                        const quantity = parseInt(quantityInput.value, 10) || 1;
+                        const availableStock = parseInt(quantityInput.max, 10);
+
+                        if (quantity > availableStock) {
+                            showToast(`Only ${availableStock} left for size ${size}. Please reduce quantity.`, true);
+                            stockError = true;
+                            return;
+                        }
+
+                        const item = {
+                            id: `${productId}-${selectedColorEl.dataset.color}-${size}-${itemDetails.designId || ''}`,
+                            productId: productId, name: product.name, price: product.price,
+                            color: selectedColorEl.dataset.color, size: size,
+                            image: selectedColorEl.dataset.image, quantity: quantity,
+                            ...(itemDetails.designId && { design: { name: itemDetails.designName } })
+                        };
+                        addToCart(item);
+                        totalQuantityAdded += quantity;
+                    });
+
+                    if (totalQuantityAdded > 0 && !stockError) {
+                        showToast(`${totalQuantityAdded} item${totalQuantityAdded > 1 ? 's' : ''} added to cart!`);
+                        selectedSizeNodes.forEach(node => node.classList.remove('selected'));
+                        card.querySelector('.design-option.selected')?.classList.remove('selected');
+                    }
+                }
             });
 
-            productGrid.addEventListener('change', (e) => { if (e.target.matches('input[type="checkbox"]')) { updateStockDisplay(e.target.closest('[data-product-id]')); } });
-
-            function updateCart() {
-                let totalItems = 0; let totalPrice = 0; cartItemsContainer.innerHTML = ''; const isCartEmpty = Object.keys(cart).length === 0;
-                if (isCartEmpty) { cartItemsContainer.innerHTML = '<p class="text-gray-500 text-center">Your cart is empty.</p>'; checkoutButton.disabled = true; checkoutButton.classList.add('opacity-50', 'cursor-not-allowed'); clearCartBtn.style.display = 'none'; } 
-                else { checkoutButton.disabled = false; checkoutButton.classList.remove('opacity-50', 'cursor-not-allowed'); clearCartBtn.style.display = 'block';
-                    for (const id in cart) { const item = cart[id]; totalItems += item.quantity; totalPrice += item.quantity * item.price; const el = document.createElement('div'); el.className = 'flex justify-between items-center py-3 border-b'; el.innerHTML = `<div><p class="font-semibold">${item.name} <span class="text-sm text-gray-500">(${item.category}, ${item.size}, ${item.color})</span></p><p class="text-sm text-gray-600">Qty: ${item.quantity} x ₹${item.price.toFixed(2)}</p></div><div class="text-right"><p class="font-semibold">₹${(item.quantity * item.price).toFixed(2)}</p><button class="remove-from-cart-btn text-xs text-red-500 hover:text-red-700 font-medium" data-id="${id}">Remove</button></div>`; cartItemsContainer.appendChild(el); }
+            // --- CART LOGIC ---
+            const addToCart = (item) => {
+                const existingItem = cart.find(cartItem => cartItem.id === item.id);
+                if (existingItem) {
+                    existingItem.quantity += item.quantity;
+                } else {
+                    cart.push(item);
                 }
-                cartCount.textContent = totalItems; cartTotal.textContent = `₹${totalPrice.toFixed(2)}`; saveCart();
-            }
-            function showToast() { clearTimeout(toastTimer); toast.classList.remove('opacity-0'); toastTimer = setTimeout(() => { toast.classList.add('opacity-0'); }, 2000); }
-            function toggleModal(modal, show) { if (show) modal.classList.add('is-open'); else modal.classList.remove('is-open'); }
+                updateCart();
+            };
+
+            const updateCart = () => {
+                localStorage.setItem(cartStorageKey, JSON.stringify(cart));
+                renderCartItems();
+                updateCartCount();
+                updateCartSubtotal();
+                updateStockDisplay(); // This is the key change!
+                whatsappBtn.disabled = cart.length === 0;
+            };
+
+            const renderCartItems = () => {
+                cartItemsContainer.innerHTML = '';
+                if (cart.length === 0) {
+                    emptyCartMessage.style.display = 'block';
+                } else {
+                    emptyCartMessage.style.display = 'none';
+                    cart.forEach(item => {
+                        const cartItemEl = document.createElement('div');
+                        cartItemEl.className = 'flex items-center space-x-3 sm:space-x-4 mb-5 pb-5 border-b last:border-b-0 cart-item-enter';
+                        cartItemEl.innerHTML = `
+                            <img src="${item.image}" alt="${item.name}" class="w-16 h-20 sm:w-20 sm:h-24 object-cover rounded-md">
+                            <div class="flex-grow">
+                                <p class="font-semibold">${item.name}</p>
+                                <p class="text-sm text-gray-500">Color: ${item.color}</p>
+                                <p class="text-sm text-gray-500">Size: ${item.size}</p>
+                                ${item.design ? `<p class="text-sm text-gray-500 font-medium">Design: ${item.design.name}</p>` : ''}
+                                <p class="font-bold mt-1">₹${item.price}</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="flex items-center border rounded-md">
+                                    <button class="px-2 py-1 text-gray-600 hover:bg-gray-100" data-itemid="${item.id}" data-action="decrease">-</button>
+                                    <span class="px-3">${item.quantity}</span>
+                                    <button class="px-2 py-1 text-gray-600 hover:bg-gray-100" data-itemid="${item.id}" data-action="increase">+</button>
+                                </div>
+                                <button class="text-xs text-red-500 hover:underline mt-2" data-itemid="${item.id}" data-action="remove">Remove</button>
+                            </div>
+                        `;
+                        cartItemsContainer.appendChild(cartItemEl);
+                        requestAnimationFrame(() => cartItemEl.classList.add('cart-item-enter-active'));
+                    });
+                }
+            };
             
-            cartItemsContainer.addEventListener('click', (e) => { 
-                if (e.target.classList.contains('remove-from-cart-btn')) { 
-                    const id = e.target.dataset.id; delete cart[id]; updateCart(); 
-                    const card = document.querySelector(`[data-product-id="${id.split('-')[0]}"]`); if (card) updateStockDisplay(card);
-                } 
+            cartItemsContainer.addEventListener('click', (e) => {
+                if(e.target.tagName !== 'BUTTON') return;
+                const itemId = e.target.dataset.itemid;
+                const action = e.target.dataset.action;
+                const itemIndex = cart.findIndex(item => item.id === itemId);
+                if (itemIndex === -1) return;
+
+                if (action === 'increase') {
+                    const item = cart[itemIndex];
+                    const product = products.find(p => p.id === item.productId);
+                    if (product) {
+                        const colorData = product.colors.find(c => c.name === item.color);
+                        if (colorData) {
+                            const totalStock = colorData.stockBySize?.[item.size] || 0;
+                            if (item.quantity < totalStock) {
+                                cart[itemIndex].quantity++;
+                            } else {
+                                showToast('No more stock available for this item.', true);
+                                return; // Stop the function here
+                            }
+                        } else {
+                           cart[itemIndex].quantity++; // Failsafe if data is missing
+                        }
+                    } else {
+                        cart[itemIndex].quantity++; // Failsafe if product is missing
+                    }
+                } else if (action === 'decrease') {
+                    cart[itemIndex].quantity--;
+                    if (cart[itemIndex].quantity <= 0) cart.splice(itemIndex, 1);
+                } else if (action === 'remove') {
+                    cart.splice(itemIndex, 1);
+                }
+                
+                updateCart();
             });
 
-            function updateImageViewer() {
-                if (viewerState.images.length > 0) fullViewImage.src = viewerState.images[viewerState.currentIndex];
-                viewerPrevBtn.style.display = viewerState.images.length > 1 ? 'flex' : 'none';
-                viewerNextBtn.style.display = viewerState.images.length > 1 ? 'flex' : 'none';
-            }
+            const updateCartCount = () => {
+                cartCountEl.textContent = cart.reduce((sum, item) => sum + item.quantity, 0);
+            };
 
-            // --- Full Screen Viewer Swipe Logic ---
-            let viewerTouchStartX = 0;
-            imageViewerModal.addEventListener('touchstart', e => { viewerTouchStartX = e.changedTouches[0].screenX; }, { passive: true });
-            imageViewerModal.addEventListener('touchend', e => {
-                let viewerTouchEndX = e.changedTouches[0].screenX;
-                if (viewerState.images.length < 2) return;
-                if (viewerTouchEndX < viewerTouchStartX - 50) { // Swiped left
-                    viewerState.currentIndex = (viewerState.currentIndex + 1) % viewerState.images.length;
-                    updateImageViewer();
-                } else if (viewerTouchEndX > viewerTouchStartX + 50) { // Swiped right
-                    viewerState.currentIndex = (viewerState.currentIndex - 1 + viewerState.images.length) % viewerState.images.length;
-                    updateImageViewer();
-                }
-            }, { passive: true });
+            const updateCartSubtotal = () => {
+                const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                cartSubtotalEl.textContent = `₹${subtotal.toFixed(2)}`;
+            };
+
+            const openCart = () => {
+                cartModal.classList.remove('hidden');
+                setTimeout(() => cartPanel.classList.remove('translate-x-full'), 10);
+            };
+
+            const closeCart = () => {
+                cartPanel.classList.add('translate-x-full');
+                setTimeout(() => cartModal.classList.add('hidden'), 300);
+            };
             
-            viewerPrevBtn.addEventListener('click', () => { viewerState.currentIndex = (viewerState.currentIndex - 1 + viewerState.images.length) % viewerState.images.length; updateImageViewer(); });
-            viewerNextBtn.addEventListener('click', () => { viewerState.currentIndex = (viewerState.currentIndex + 1) % viewerState.images.length; updateImageViewer(); });
+            cartButton.addEventListener('click', openCart);
+            closeCartBtn.addEventListener('click', closeCart);
+            cartModal.addEventListener('click', (e) => e.target === cartModal && closeCart());
 
-            viewCartButton.addEventListener('click', () => { updateCart(); toggleModal(cartModal, true); });
-            checkoutButton.addEventListener('click', () => { toggleModal(cartModal, false); toggleModal(detailsModal, true); });
-            document.querySelectorAll('.close-modal-btn').forEach(btn => btn.addEventListener('click', (e) => { const modal = e.target.closest('.modal'); if(modal) toggleModal(modal, false); }));
-            closeImageViewerBtn.addEventListener('click', () => toggleModal(imageViewerModal, false));
-            imageViewerModal.addEventListener('click', (e) => { if (e.target === imageViewerModal) toggleModal(imageViewerModal, false); });
-            clearCartBtn.addEventListener('click', () => { showConfirm("Clear Cart", "Are you sure you want to clear your cart?", () => { cart = {}; updateCart(); document.querySelectorAll('[data-product-id]').forEach(updateStockDisplay); }); });
-            sendWhatsappButton.addEventListener('click', () => { if (!ownerDetailsForm.checkValidity()) { ownerDetailsForm.reportValidity(); return; } const formData = new FormData(ownerDetailsForm); const ownerDetails = Object.fromEntries(formData.entries()); let message = `*New T-Shirt Order*\n\n*From:* ${ownerDetails.ownerName}\n*Shop:* ${ownerDetails.shopName}\n*Address:* ${ownerDetails.shopAddress}\n\n--- *Order Details* ---\n`; let totalPrice = 0; for (const id in cart) { const item = cart[id]; const itemTotal = item.quantity * item.price; totalPrice += itemTotal; message += `- *${item.name}* (${item.category}, ${item.size}, ${item.color})\n  *Qty:* ${item.quantity} x ₹${item.price.toFixed(2)} = *₹${itemTotal.toFixed(2)}*\n`; } message += `\n*GRAND TOTAL: ₹${totalPrice.toFixed(2)}*\n\nThank you!`; const whatsappUrl = `https://wa.me/${yourWhatsAppNumber}?text=${encodeURIComponent(message)}`; window.open(whatsappUrl, '_blank'); });
+            // --- WHATSAPP ORDER LOGIC ---
+            whatsappBtn.addEventListener('click', () => {
+                if (cart.length === 0) return;
+                let message = `Hello LAFANDAR, I'd like to place an order:\n\n*Order Summary:*\n\n`;
+                cart.forEach((item, index) => {
+                    message += `*${index + 1}. ${item.name}*\n   - Color: ${item.color}\n   - Size: ${item.size}\n`;
+                    if (item.design) message += `   - Design: ${item.design.name}\n`;
+                    message += `   - Quantity: ${item.quantity}\n   - Price: ₹${item.price}\n\n`;
+                });
+                const subtotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                message += `--------------------\n*Total Items:* ${cart.reduce((sum, item) => sum + item.quantity, 0)}\n*Subtotal:* ₹${subtotal.toFixed(2)}\n\nPlease confirm my order. Thank you!`;
+                window.open(`https://wa.me/${whatsAppNumber}?text=${encodeURIComponent(message)}`, '_blank');
+            });
 
-            loadCart();
+            // --- DESIGN PREVIEW MODAL LOGIC ---
+            const openDesignModal = (imageUrl) => {
+                designModalImage.src = imageUrl;
+                designModal.classList.remove('hidden');
+                designModal.classList.add('flex');
+                setTimeout(() => designModalContent.style.transform = 'scale(1)', 10);
+            };
+            const closeDesignModal = () => {
+                designModalContent.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    designModal.classList.add('hidden');
+                    designModal.classList.remove('flex');
+                }, 200);
+            };
+            closeDesignBtn.addEventListener('click', closeDesignModal);
+            designModal.addEventListener('click', (e) => e.target === designModal && closeDesignModal());
+            document.addEventListener('keydown', (e) => e.key === 'Escape' && !designModal.classList.contains('hidden') && closeDesignModal());
+
+            // --- TOAST NOTIFICATION ---
+            let toastTimer;
+            const showToast = (message, isError = false) => {
+                toastMessage.textContent = message;
+                toast.className = `toast fixed bottom-5 right-5 text-white py-3 px-6 rounded-lg shadow-lg flex items-center z-[100] ${isError ? 'bg-red-600' : 'bg-green-600'}`;
+                toast.classList.add('show');
+                clearTimeout(toastTimer);
+                toastTimer = setTimeout(() => toast.classList.remove('show'), 3000);
+            };
+
+            // --- INITIALIZATION ---
             updateCart();
-            fetchProducts();
         });
     </script>
 </body>
