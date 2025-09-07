@@ -21,13 +21,14 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .size-tag {
+        .data-tag {
             cursor: pointer;
             transition: all 0.2s ease-in-out;
         }
-        .size-tag.selected {
+        .data-tag.selected {
             background-color: #4f46e5;
             color: white;
+            border-color: #4f46e5;
         }
         .nav-btn.active {
             background-color: #eef2ff;
@@ -122,18 +123,18 @@
                     <input type="hidden" id="product-id">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Product Name</label>
-                        <input list="product-name-list" id="product-name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" required>
-                        <datalist id="product-name-list"></datalist>
+                        <div id="product-name-selector" class="tag-selector-container mt-1"></div>
+                        <input type="text" id="product-name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Type or select a name" required>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Description</label>
-                        <input list="description-list" id="product-description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
-                        <datalist id="description-list"></datalist>
+                        <div id="description-selector" class="tag-selector-container mt-1"></div>
+                        <input type="text" id="product-description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Type or select a description">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Price (₹)</label>
-                        <input list="price-list" type="number" id="product-price" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" required>
-                        <datalist id="price-list"></datalist>
+                        <div id="price-selector" class="tag-selector-container mt-1"></div>
+                        <input type="number" id="product-price" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Type or select a price" required>
                     </div>
 
                     <div class="border-t pt-4">
@@ -201,11 +202,10 @@
             const viewVisitorsBtn = document.getElementById('view-visitors-btn');
             const productsView = document.getElementById('products-view');
             const visitorsView = document.getElementById('visitors-view');
-            const descriptionList = document.getElementById('description-list');
-            const productNameList = document.getElementById('product-name-list');
-            const priceList = document.getElementById('price-list');
+            const nameSelector = document.getElementById('product-name-selector');
+            const descriptionSelector = document.getElementById('description-selector');
+            const priceSelector = document.getElementById('price-selector');
 
-            
             let products = [];
             let masterSizes = [];
             let visitors = [];
@@ -286,28 +286,19 @@
 
                 for (const key in collectionsToLoad) {
                     let q = collection(db, collectionsToLoad[key].path);
-                    if (key === 'visitors') {
-                        q = query(q, orderBy("timestamp", "desc"));
-                    }
-
+                    if (key === 'visitors') q = query(q, orderBy("timestamp", "desc"));
+                    
                     onSnapshot(q, (snapshot) => {
                         const data = snapshot.docs.map(doc => key === 'products' || key === 'visitors' ? { id: doc.id, ...doc.data() } : doc.id);
-                        
                         if (collectionsToLoad[key].sort === 'string') data.sort();
                         if (collectionsToLoad[key].sort === 'number') data.sort((a,b) => a - b);
-                        
                         collectionsToLoad[key].array.length = 0;
                         collectionsToLoad[key].array.push(...data);
 
-                        // Update UI accordingly
-                        if (key === 'descriptions') descriptionList.innerHTML = masterDescriptions.map(desc => `<option value="${desc}"></option>`).join('');
-                        if (key === 'productNames') productNameList.innerHTML = masterProductNames.map(name => `<option value="${name}"></option>`).join('');
-                        if (key === 'prices') priceList.innerHTML = masterPrices.map(p => `<option value="${p}"></option>`).join('');
                         if (key === 'products') renderProducts();
                         if (key === 'visitors') renderVisitors();
                         
                         loadingIndicator.style.display = 'none';
-
                     }, (error) => handlePermissionError(error));
                 }
             };
@@ -354,10 +345,26 @@
             };
             
             // --- MODAL LOGIC ---
+            const renderTagSelector = (container, items, selectedValue) => {
+                container.innerHTML = '';
+                const wrapper = document.createElement('div');
+                wrapper.className = "flex flex-wrap gap-2 mb-2";
+                items.forEach(item => {
+                    const tag = document.createElement('button');
+                    tag.type = 'button';
+                    tag.className = `data-tag text-sm font-medium px-3 py-1 rounded-full border bg-gray-100 ${selectedValue == item ? 'selected' : ''}`;
+                    tag.textContent = item;
+                    tag.dataset.value = item;
+                    wrapper.appendChild(tag);
+                });
+                container.appendChild(wrapper);
+            };
+
             const openModal = (product = null) => {
                 productForm.reset();
                 colorsContainer.innerHTML = '';
                 document.getElementById('product-id').value = '';
+                
                 if (product) {
                     modalTitle.textContent = 'Edit Product';
                     document.getElementById('product-id').value = product.id;
@@ -369,6 +376,11 @@
                     modalTitle.textContent = 'Add Product';
                     addColorRow();
                 }
+
+                renderTagSelector(nameSelector, masterProductNames, product?.name);
+                renderTagSelector(descriptionSelector, masterDescriptions, product?.description);
+                renderTagSelector(priceSelector, masterPrices, product?.price);
+
                 productModal.classList.add('is-open');
             };
 
@@ -380,9 +392,9 @@
 
             const populateStockInputs = (stockContainer, sizeTagsContainer) => {
                 stockContainer.innerHTML = '';
-                const selectedSizes = Array.from(sizeTagsContainer.querySelectorAll('.size-tag.selected')).map(tag => tag.dataset.size);
+                const selectedSizes = Array.from(sizeTagsContainer.querySelectorAll('.data-tag.selected')).map(tag => tag.dataset.value);
                 selectedSizes.forEach(size => {
-                    const stockValue = sizeTagsContainer.querySelector(`.size-tag[data-size="${size}"]`).dataset.stock || 0;
+                    const stockValue = sizeTagsContainer.querySelector(`.data-tag[data-value="${size}"]`).dataset.stock || 0;
                     const stockDiv = document.createElement('div');
                     stockDiv.className = 'flex items-center gap-2';
                     stockDiv.innerHTML = `
@@ -397,12 +409,13 @@
                 const div = document.createElement('div');
                 div.className = 'border p-3 rounded-md space-y-3';
                 const availableSizesForColor = color.stockBySize ? Object.keys(color.stockBySize) : [];
-                const colorDatalistId = `color-list-${Date.now()}`;
-
+                
                 div.innerHTML = `
                     <div class="flex items-center gap-4">
-                        <input list="${colorDatalistId}" placeholder="Color Name" class="color-name flex-1 rounded-md border-gray-300" value="${color.name || ''}" required>
-                        <datalist id="${colorDatalistId}"></datalist>
+                        <div class="flex-1">
+                            <div class="color-name-selector tag-selector-container"></div>
+                            <input placeholder="Type or select a Color Name" class="color-name mt-1 block w-full rounded-md border-gray-300" value="${color.name || ''}" required>
+                        </div>
                         <input type="color" class="color-hex rounded-md border-gray-300" value="${color.hex || '#000000'}">
                         <button type="button" class="remove-color-btn text-red-500 hover:text-red-700">Remove</button>
                     </div>
@@ -431,17 +444,18 @@
                 `;
                 colorsContainer.appendChild(div);
                 
-                div.querySelector(`#${colorDatalistId}`).innerHTML = masterColors.map(c => `<option value="${c}"></option>`).join('');
+                renderTagSelector(div.querySelector('.color-name-selector'), masterColors, color.name);
 
                 const sizeSelectorContainer = div.querySelector('.size-selector-container');
                 const stockContainer = div.querySelector('.stock-container');
                 
                 masterSizes.forEach(size => {
                     const isSelected = availableSizesForColor.includes(size);
-                    const tag = document.createElement('span');
-                    tag.className = `size-tag text-sm font-medium px-3 py-1 rounded-full bg-gray-200 ${isSelected ? 'selected' : ''}`;
+                    const tag = document.createElement('button');
+                    tag.type = 'button';
+                    tag.className = `data-tag text-sm font-medium px-3 py-1 rounded-full border bg-gray-100 ${isSelected ? 'selected' : ''}`;
                     tag.textContent = size;
-                    tag.dataset.size = size;
+                    tag.dataset.value = size;
                     if(isSelected) tag.dataset.stock = color.stockBySize[size];
                     sizeSelectorContainer.appendChild(tag);
                 });
@@ -469,11 +483,30 @@
                 if (e.target.classList.contains('remove-color-btn')) e.target.closest('.border.p-3').remove();
                 if (e.target.classList.contains('add-design-btn')) addDesignRow(e.target.previousElementSibling);
                 if (e.target.classList.contains('remove-design-btn')) e.target.parentElement.remove();
-                if (e.target.classList.contains('size-tag')) {
-                    e.target.classList.toggle('selected');
-                    const colorContainer = e.target.closest('.border.p-3');
-                    populateStockInputs(colorContainer.querySelector('.stock-container'), colorContainer.querySelector('.size-selector-container'));
+                
+                if (e.target.classList.contains('data-tag')) {
+                    const tag = e.target;
+                    const container = tag.closest('.tag-selector-container');
+                    const inputId = container.id.replace('-selector', '');
+                    const inputEl = document.getElementById(inputId) || container.parentElement.querySelector(`.${inputId}`);
+                    
+                    if (tag.classList.contains('selected')) {
+                        tag.classList.remove('selected');
+                        inputEl.value = '';
+                    } else {
+                        container.querySelectorAll('.data-tag').forEach(t => t.classList.remove('selected'));
+                        tag.classList.add('selected');
+                        inputEl.value = tag.dataset.value;
+                    }
                 }
+
+                if (e.target.closest('.size-selector-container')?.classList.contains('size-selector-container') && e.target.classList.contains('data-tag')) {
+                     const tag = e.target;
+                     tag.classList.toggle('selected');
+                     const colorContainer = tag.closest('.border.p-3');
+                     populateStockInputs(colorContainer.querySelector('.stock-container'), colorContainer.querySelector('.size-selector-container'));
+                }
+                
                 if (e.target.classList.contains('add-new-size-btn')) {
                     const input = e.target.previousElementSibling;
                     const newSize = input.value.trim().toUpperCase();
@@ -544,7 +577,7 @@
                         const designs = await Promise.all(designPromises);
                         
                         const stockBySize = {};
-                        const selectedSizes = Array.from(colorDiv.querySelectorAll('.size-tag.selected')).map(tag => tag.dataset.size);
+                        const selectedSizes = Array.from(colorDiv.querySelectorAll('.size-selector-container .data-tag.selected')).map(tag => tag.dataset.value);
                         selectedSizes.forEach(size => {
                             allUniqueSizes.add(size);
                             const stockInput = colorDiv.querySelector(`.stock-input[data-size="${size}"]`);
