@@ -122,15 +122,18 @@
                     <input type="hidden" id="product-id">
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Product Name</label>
-                        <input type="text" id="product-name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" required>
+                        <input list="product-name-list" id="product-name" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" required>
+                        <datalist id="product-name-list"></datalist>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Description</label>
-                        <textarea id="product-description" rows="3" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"></textarea>
+                        <input list="description-list" id="product-description" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50">
+                        <datalist id="description-list"></datalist>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Price (₹)</label>
-                        <input type="number" id="product-price" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" required>
+                        <input list="price-list" type="number" id="product-price" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50" required>
+                        <datalist id="price-list"></datalist>
                     </div>
 
                     <div class="border-t pt-4">
@@ -168,6 +171,10 @@
             const productsCollectionPath = `/artifacts/${appId}/public/data/products`;
             const sizesCollectionPath = `/artifacts/${appId}/public/data/sizes`;
             const visitorsCollectionPath = `/artifacts/${appId}/public/data/visitors`;
+            const descriptionsCollectionPath = `/artifacts/${appId}/public/data/descriptions`;
+            const colorsMasterCollectionPath = `/artifacts/${appId}/public/data/colors`;
+            const productNamesCollectionPath = `/artifacts/${appId}/public/data/productNames`;
+            const pricesCollectionPath = `/artifacts/${appId}/public/data/prices`;
 
             const app = initializeApp(firebaseConfig);
             const db = getFirestore(app);
@@ -194,10 +201,18 @@
             const viewVisitorsBtn = document.getElementById('view-visitors-btn');
             const productsView = document.getElementById('products-view');
             const visitorsView = document.getElementById('visitors-view');
+            const descriptionList = document.getElementById('description-list');
+            const productNameList = document.getElementById('product-name-list');
+            const priceList = document.getElementById('price-list');
+
             
             let products = [];
             let masterSizes = [];
             let visitors = [];
+            let masterDescriptions = [];
+            let masterColors = [];
+            let masterProductNames = [];
+            let masterPrices = [];
             
             // --- AUTHENTICATION & ERROR HANDLING ---
             const handlePermissionError = (error) => {
@@ -218,9 +233,7 @@
                 if (user) {
                     loginScreen.style.display = 'none';
                     adminPanel.style.display = 'block';
-                    loadProducts();
-                    loadMasterSizes();
-                    loadVisitors();
+                    loadMasterData();
                 } else {
                     loginScreen.style.display = 'flex';
                     adminPanel.style.display = 'none';
@@ -258,30 +271,48 @@
                 viewVisitorsBtn.classList.add('active');
             });
 
-
-            const loadMasterSizes = () => {
-                onSnapshot(collection(db, sizesCollectionPath), (snapshot) => {
-                    masterSizes = snapshot.docs.map(doc => doc.id).sort();
-                }, (error) => handlePermissionError(error));
-            };
-
-            const loadProducts = () => {
+            // --- MASTER DATA LOADING ---
+            const loadMasterData = () => {
                 loadingIndicator.style.display = 'flex';
-                onSnapshot(collection(db, productsCollectionPath), (snapshot) => {
-                    products = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    renderProducts();
-                    loadingIndicator.style.display = 'none';
-                }, (error) => handlePermissionError(error));
+                const collectionsToLoad = {
+                    sizes: { path: sizesCollectionPath, array: masterSizes, sort: 'string' },
+                    descriptions: { path: descriptionsCollectionPath, array: masterDescriptions, sort: 'string' },
+                    colors: { path: colorsMasterCollectionPath, array: masterColors, sort: 'string' },
+                    productNames: { path: productNamesCollectionPath, array: masterProductNames, sort: 'string' },
+                    prices: { path: pricesCollectionPath, array: masterPrices, sort: 'number' },
+                    products: { path: productsCollectionPath, array: products, sort: 'string' },
+                    visitors: { path: visitorsCollectionPath, array: visitors, sort: 'timestamp' }
+                };
+
+                for (const key in collectionsToLoad) {
+                    let q = collection(db, collectionsToLoad[key].path);
+                    if (key === 'visitors') {
+                        q = query(q, orderBy("timestamp", "desc"));
+                    }
+
+                    onSnapshot(q, (snapshot) => {
+                        const data = snapshot.docs.map(doc => key === 'products' || key === 'visitors' ? { id: doc.id, ...doc.data() } : doc.id);
+                        
+                        if (collectionsToLoad[key].sort === 'string') data.sort();
+                        if (collectionsToLoad[key].sort === 'number') data.sort((a,b) => a - b);
+                        
+                        collectionsToLoad[key].array.length = 0;
+                        collectionsToLoad[key].array.push(...data);
+
+                        // Update UI accordingly
+                        if (key === 'descriptions') descriptionList.innerHTML = masterDescriptions.map(desc => `<option value="${desc}"></option>`).join('');
+                        if (key === 'productNames') productNameList.innerHTML = masterProductNames.map(name => `<option value="${name}"></option>`).join('');
+                        if (key === 'prices') priceList.innerHTML = masterPrices.map(p => `<option value="${p}"></option>`).join('');
+                        if (key === 'products') renderProducts();
+                        if (key === 'visitors') renderVisitors();
+                        
+                        loadingIndicator.style.display = 'none';
+
+                    }, (error) => handlePermissionError(error));
+                }
             };
             
-            const loadVisitors = () => {
-                 const q = query(collection(db, visitorsCollectionPath), orderBy("timestamp", "desc"));
-                 onSnapshot(q, (snapshot) => {
-                    visitors = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    renderVisitors();
-                }, (error) => handlePermissionError(error));
-            };
-
+            // --- RENDER VIEWS ---
             const renderProducts = () => {
                 productList.innerHTML = '';
                 if (products.length === 0 && productsView.style.display !== 'none') {
@@ -322,6 +353,7 @@
                 }
             };
             
+            // --- MODAL LOGIC ---
             const openModal = (product = null) => {
                 productForm.reset();
                 colorsContainer.innerHTML = '';
@@ -365,10 +397,12 @@
                 const div = document.createElement('div');
                 div.className = 'border p-3 rounded-md space-y-3';
                 const availableSizesForColor = color.stockBySize ? Object.keys(color.stockBySize) : [];
+                const colorDatalistId = `color-list-${Date.now()}`;
 
                 div.innerHTML = `
                     <div class="flex items-center gap-4">
-                        <input type="text" placeholder="Color Name" class="color-name flex-1 rounded-md border-gray-300" value="${color.name || ''}" required>
+                        <input list="${colorDatalistId}" placeholder="Color Name" class="color-name flex-1 rounded-md border-gray-300" value="${color.name || ''}" required>
+                        <datalist id="${colorDatalistId}"></datalist>
                         <input type="color" class="color-hex rounded-md border-gray-300" value="${color.hex || '#000000'}">
                         <button type="button" class="remove-color-btn text-red-500 hover:text-red-700">Remove</button>
                     </div>
@@ -396,6 +430,8 @@
                     </div>
                 `;
                 colorsContainer.appendChild(div);
+                
+                div.querySelector(`#${colorDatalistId}`).innerHTML = masterColors.map(c => `<option value="${c}"></option>`).join('');
 
                 const sizeSelectorContainer = div.querySelector('.size-selector-container');
                 const stockContainer = div.querySelector('.stock-container');
@@ -445,7 +481,6 @@
                         try {
                             await setDoc(doc(db, sizesCollectionPath, newSize), {});
                             input.value = '';
-                            setTimeout(() => openModal(products.find(p => p.id === document.getElementById('product-id').value)), 200);
                         } catch (error) { handlePermissionError(error); }
                     } else if (newSize) {
                         alert(`Size "${newSize}" already exists.`);
@@ -476,8 +511,19 @@
                     const productId = document.getElementById('product-id').value || `prod_${Date.now()}`;
                     let allUniqueSizes = new Set();
                     
+                    const newProductName = document.getElementById('product-name').value;
+                    if (newProductName && !masterProductNames.includes(newProductName)) await setDoc(doc(db, productNamesCollectionPath, newProductName), {});
+                    
+                    const newDescription = document.getElementById('product-description').value;
+                    if (newDescription && !masterDescriptions.includes(newDescription)) await setDoc(doc(db, descriptionsCollectionPath, newDescription), {});
+                    
+                    const newPrice = document.getElementById('product-price').value;
+                    if (newPrice && !masterPrices.includes(newPrice)) await setDoc(doc(db, pricesCollectionPath, newPrice), {});
+
                     const colorPromises = Array.from(colorsContainer.children).map(async (colorDiv) => {
                         const colorName = colorDiv.querySelector('.color-name').value;
+                        if (colorName && !masterColors.includes(colorName)) await setDoc(doc(db, colorsMasterCollectionPath, colorName), {});
+
                         const imageFile = colorDiv.querySelector('.color-image').files[0];
                         let imageUrl = colorDiv.querySelector('.color-image + img')?.src;
                         
@@ -516,9 +562,9 @@
                     });
                     
                     const productData = {
-                        name: document.getElementById('product-name').value,
-                        description: document.getElementById('product-description').value,
-                        price: parseFloat(document.getElementById('product-price').value),
+                        name: newProductName,
+                        description: newDescription,
+                        price: parseFloat(newPrice),
                         sizes: Array.from(allUniqueSizes),
                         colors: await Promise.all(colorPromises)
                     };
