@@ -363,7 +363,7 @@
                             <span class="stock-display text-xs text-center ${isOutOfStock ? 'text-red-500 font-semibold' : 'text-gray-500'}">
                                 ${isOutOfStock ? 'Out of Stock' : `${remainingStock} left`}
                             </span>
-                            <input type="number" min="1" max="${remainingStock}" value="1" class="quantity-input border-gray-300 rounded-md text-center text-sm p-1" placeholder="Qty" ${isOutOfStock ? 'disabled' : ''}>
+                            <input type="number" min="0" max="${remainingStock}" value="0" class="quantity-input border-gray-300 rounded-md text-center text-sm p-1" placeholder="0" ${isOutOfStock ? 'disabled' : ''}>
                         </div>
                     `;
                 }).join('');
@@ -465,6 +465,21 @@
             };
 
             // --- EVENT LISTENERS ---
+            productGrid.addEventListener('input', (e) => {
+                if (e.target.classList.contains('quantity-input')) {
+                    const value = parseInt(e.target.value, 10) || 0;
+                    const sizeContainer = e.target.closest('.size-container');
+                    if (sizeContainer) {
+                        const sizeBtn = sizeContainer.querySelector('.size-btn');
+                        if (value > 0) {
+                            sizeBtn.classList.add('selected');
+                        } else {
+                            sizeBtn.classList.remove('selected');
+                        }
+                    }
+                }
+            });
+
             productGrid.addEventListener('click', (e) => {
                 const card = e.target.closest('.bg-white');
                 if (!card) return;
@@ -563,7 +578,10 @@
                         if (stockError) return;
                         const size = sizeNode.dataset.size;
                         const quantityInput = sizeNode.parentElement.querySelector('.quantity-input');
-                        const quantity = parseInt(quantityInput.value, 10) || 1;
+                        const quantity = parseInt(quantityInput.value, 10) || 0;
+                        
+                        if (quantity <= 0) return; // Skip items with 0 quantity
+
                         const availableStock = selectedColorData.stockBySize?.[size] || 0;
                         const itemInCart = cart.find(item => item.id.startsWith(`${productId}-${selectedColorName}-${size}`));
                         const quantityInCart = itemInCart ? itemInCart.quantity : 0;
