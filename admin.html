@@ -435,7 +435,7 @@
                     <div>
                         <label class="text-sm font-medium">Main Image</label>
                         <button type="button" class="choose-image-btn block text-sm text-violet-700 font-semibold hover:underline" data-target="color">Choose from Library</button>
-                        <input type="hidden" class="image-url-input">
+                        <input type="hidden" class="image-url-input" value="${color.image || ''}">
                         <img src="${color.image || ''}" class="preview-image h-16 mt-2 rounded ${color.image ? '' : 'hidden'}">
                     </div>
                     <div>
@@ -486,7 +486,7 @@
                     <input type="text" placeholder="Design Name" class="design-name flex-1 rounded-md border-gray-300 text-sm" value="${design.name || ''}" required>
                     <div class="flex items-center gap-2">
                         <button type="button" class="choose-image-btn text-xs text-violet-700 font-semibold hover:underline" data-target="design">Choose</button>
-                        <input type="hidden" class="image-url-input">
+                        <input type="hidden" class="image-url-input" value="${design.image || ''}">
                         <img src="${design.image || ''}" class="preview-image h-12 rounded ${design.image ? '' : 'hidden'}">
                     </div>
                     <button type="button" class="remove-design-btn text-red-500 text-xs">Remove</button>
@@ -527,12 +527,6 @@
             });
 
             // --- IMAGE LIBRARY LOGIC ---
-            const updateLibraryButtons = () => {
-                const selected = imageLibraryGrid.querySelectorAll('.image-thumb.selected');
-                selectImageBtn.disabled = selected.length !== 1;
-                deleteImageBtn.disabled = selected.length === 0;
-            };
-
             const openImageLibrary = async () => {
                 const listRef = ref(storage, 'images/');
                 try {
@@ -557,6 +551,12 @@
                     imageLibraryGrid.appendChild(img);
                 });
                 updateLibraryButtons();
+            };
+
+            const updateLibraryButtons = () => {
+                const selected = imageLibraryGrid.querySelectorAll('.image-thumb.selected');
+                selectImageBtn.disabled = selected.length !== 1;
+                deleteImageBtn.disabled = selected.length === 0;
             };
 
             closeLibraryBtn.addEventListener('click', () => imageLibraryModal.classList.remove('is-open'));
@@ -594,7 +594,7 @@
                 const file = e.target.files[0];
                 if (!file) return;
                 try {
-                    const storageRef = ref(storage, `images/${Date.now()}-${file.name}`);
+                    const storageRef = ref(storage, `images/${Date.now()}-${file.name}`); // Use unique name
                     await uploadBytes(storageRef, file);
                     uploadNewImageInput.value = ''; // Reset input
                     openImageLibrary(); // Refresh library
