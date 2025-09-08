@@ -8,8 +8,6 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Cropper.js CSS -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.css" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
         .modal { display: none; }
@@ -42,14 +40,6 @@
         #image-library-grid .image-thumb.selected {
             outline-color: #4f46e5;
             outline-offset: 2px;
-        }
-        /* Cropper.js container */
-        .cropper-container {
-            max-width: 100%;
-            max-height: 70vh;
-        }
-        #image-to-crop {
-            max-width: 100%;
         }
     </style>
 </head>
@@ -131,24 +121,6 @@
         </main>
     </div>
     
-    <!-- Image Cropper Modal -->
-    <div id="cropper-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-75 h-full w-full items-center justify-center p-4 z-30">
-        <div class="relative w-full max-w-4xl flex flex-col shadow-lg rounded-md bg-white">
-             <div class="p-4 border-b flex justify-between items-center">
-                 <h3 class="text-lg font-medium text-gray-900">Crop Image</h3>
-                 <button id="close-cropper-btn" class="text-gray-500 hover:text-gray-800 text-2xl font-bold">&times;</button>
-             </div>
-             <div class="p-4 flex-grow flex items-center justify-center">
-                 <div class="cropper-container">
-                    <img id="image-to-crop">
-                </div>
-             </div>
-             <div class="p-4 border-t flex justify-end">
-                <button id="crop-and-upload-btn" class="bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600">Crop & Upload</button>
-             </div>
-        </div>
-    </div>
-
     <!-- Image Library Modal -->
     <div id="image-library-modal" class="modal fixed inset-0 bg-gray-600 bg-opacity-50 h-full w-full items-center justify-center p-4 z-20">
         <div class="relative w-full max-w-5xl h-[90vh] flex flex-col shadow-lg rounded-md bg-white">
@@ -167,7 +139,6 @@
                     <input type="file" id="upload-new-image" class="hidden" accept="image/*">
                 </div>
                 <div class="flex items-center gap-4">
-                    <button id="crop-selected-btn" class="bg-yellow-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-yellow-600 disabled:bg-gray-400" disabled>Crop Image</button>
                     <button id="delete-image-btn" class="bg-red-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-600 disabled:bg-gray-400" disabled>Delete Selected</button>
                     <button id="select-image-btn" class="bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 disabled:bg-gray-400" disabled>Select Image</button>
                 </div>
@@ -212,8 +183,6 @@
     </div>
 
 
-    <!-- Cropper.js Script -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.12/cropper.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
@@ -265,20 +234,12 @@
             const uploadNewImageInput = document.getElementById('upload-new-image');
             const selectImageBtn = document.getElementById('select-image-btn');
             const deleteImageBtn = document.getElementById('delete-image-btn');
-            const cropSelectedBtn = document.getElementById('crop-selected-btn');
-            const cropperModal = document.getElementById('cropper-modal');
-            const imageToCrop = document.getElementById('image-to-crop');
-            const cropAndUploadBtn = document.getElementById('crop-and-upload-btn');
-            const closeCropperBtn = document.getElementById('close-cropper-btn');
             
             let products = [];
             let masterSizes = [];
             let visitors = [];
             let imageLibrary = [];
             let currentImageTarget = null;
-            let cropper = null;
-            let currentFileToUpload = null;
-            let isReCropping = false;
             
             // --- AUTHENTICATION & ERROR HANDLING ---
             const handlePermissionError = (error) => {
@@ -565,7 +526,7 @@
                 }
             });
 
-            // --- IMAGE LIBRARY & CROPPER LOGIC ---
+            // --- IMAGE LIBRARY LOGIC ---
             const openImageLibrary = async () => {
                 const listRef = ref(storage, 'images/');
                 try {
@@ -591,16 +552,14 @@
                 });
                 updateLibraryButtons();
             };
-            
+
             const updateLibraryButtons = () => {
                 const selected = imageLibraryGrid.querySelectorAll('.image-thumb.selected');
                 selectImageBtn.disabled = selected.length !== 1;
                 deleteImageBtn.disabled = selected.length === 0;
-                cropSelectedBtn.disabled = selected.length !== 1;
             };
 
             closeLibraryBtn.addEventListener('click', () => imageLibraryModal.classList.remove('is-open'));
-            closeCropperBtn.addEventListener('click', () => cropperModal.classList.remove('is-open'));
 
             selectImageBtn.addEventListener('click', () => {
                 const selectedImg = imageLibraryGrid.querySelector('.image-thumb.selected');
@@ -627,69 +586,19 @@
 
                 try {
                     await Promise.all(deletePromises);
-                    openImageLibrary();
+                    openImageLibrary(); // Refresh the library view
                 } catch(error) { handlePermissionError(error); }
             });
-            
-            cropSelectedBtn.addEventListener('click', () => {
-                const selectedImg = imageLibraryGrid.querySelector('.image-thumb.selected');
-                if (!selectedImg) return;
-                
-                isReCropping = true;
-                currentFileToUpload = selectedImg.src; 
-                
-                imageToCrop.onload = () => {
-                    cropperModal.classList.add('is-open');
-                    if(cropper) cropper.destroy();
-                    cropper = new Cropper(imageToCrop, { aspectRatio: 1, viewMode: 1 });
-                    imageToCrop.onload = null;
-                };
-                imageToCrop.crossOrigin = "anonymous";
-                imageToCrop.src = selectedImg.src;
-            });
 
-            uploadNewImageInput.addEventListener('change', (e) => {
+            uploadNewImageInput.addEventListener('change', async (e) => {
                 const file = e.target.files[0];
-                if (file) {
-                    isReCropping = false;
-                    currentFileToUpload = file;
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                        imageToCrop.onload = () => {
-                           cropperModal.classList.add('is-open');
-                            if (cropper) cropper.destroy();
-                            cropper = new Cropper(imageToCrop, { aspectRatio: 1, viewMode: 1, });
-                            imageToCrop.onload = null;
-                        };
-                        imageToCrop.src = event.target.result;
-                    };
-                    reader.readAsDataURL(file);
-                }
-            });
-            
-            cropAndUploadBtn.addEventListener('click', async () => {
-                 if (cropper && currentFileToUpload) {
-                    const canvas = cropper.getCroppedCanvas({ width: 800, height: 800 });
-                    if (!canvas) {
-                        alert("Cropping failed. Please try again.");
-                        return;
-                    }
-                    canvas.toBlob(async (blob) => {
-                        try {
-                            let storageRef;
-                            if (isReCropping) {
-                                storageRef = ref(storage, currentFileToUpload);
-                            } else {
-                                storageRef = ref(storage, `images/${Date.now()}-${currentFileToUpload.name}`);
-                            }
-                            await uploadBytes(storageRef, blob);
-                            uploadNewImageInput.value = '';
-                            cropperModal.classList.remove('is-open');
-                            imageLibraryModal.classList.remove('is-open'); // Close library too
-                            openImageLibrary(); // Refresh library
-                        } catch(error) { handlePermissionError(error); }
-                    }, 'image/png');
-                 }
+                if (!file) return;
+                try {
+                    const storageRef = ref(storage, `images/${Date.now()}-${file.name}`); // Use unique name
+                    await uploadBytes(storageRef, file);
+                    uploadNewImageInput.value = ''; // Reset input
+                    openImageLibrary(); // Refresh library
+                } catch(error) { handlePermissionError(error); }
             });
 
             // --- FORM SUBMISSION ---
@@ -774,4 +683,3 @@
     </script>
 </body>
 </html>
-
