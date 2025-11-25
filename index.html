@@ -291,6 +291,7 @@
             const savedCart = localStorage.getItem(cartStorageKey);
             let cart = savedCart ? JSON.parse(savedCart) : [];
             let isAuthReady = false;
+            let isProcessingOrder = false; // LOCK TO PREVENT DOUBLE ORDERS
 
             // --- AUTH LISTENER ---
             onAuthStateChanged(auth, (user) => {
@@ -823,8 +824,10 @@
 
             // --- CUSTOMER DETAILS & ORDER LOGIC ---
             const processOrder = async () => {
-                if (cart.length === 0) return;
+                // Prevent multiple clicks or empty cart
+                if (cart.length === 0 || isProcessingOrder) return;
                 
+                isProcessingOrder = true; // LOCK
                 whatsappBtn.disabled = true;
                 whatsappBtn.innerHTML = `<span>Processing...</span>`;
 
@@ -869,7 +872,7 @@
                     
                     localStorage.setItem(orderStorageKey, JSON.stringify(cart));
                     cart = [];
-                    updateCart();
+                    // updateCart will be called in finally block
                     closeCart();
                     setTimeout(openSummary, 300);
 
@@ -877,8 +880,9 @@
                     console.error("Order failed:", e);
                     showToast(e.message || "Order failed. Stock may have changed.", true);
                 } finally {
-                    whatsappBtn.disabled = false;
+                    isProcessingOrder = false; // UNLOCK
                     whatsappBtn.innerHTML = `<span>Review & Order</span>`;
+                    updateCart(); // This will re-enable button if cart is not empty, or keep disabled if empty
                 }
             };
 
