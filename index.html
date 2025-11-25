@@ -352,12 +352,14 @@
                     const allowBackorder = product.allowBackorder === true;
                     const backorderMsg = product.backorderMessage || "Backorder Available (10-15 days)";
                     
-                    const itemInCart = cart.find(item => 
+                    // Count only 'instock' type items for the remaining stock calculation
+                    const instockItem = cart.find(item => 
                         item.productId === product.id &&
                         item.color === colorData.name &&
-                        item.size === size
+                        item.size === size &&
+                        item.stockStatus === 'instock'
                     );
-                    const quantityInCart = itemInCart ? itemInCart.quantity : 0;
+                    const quantityInCart = instockItem ? instockItem.quantity : 0;
                     const remainingStock = totalStock - quantityInCart;
                     
                     // Determine status
@@ -619,34 +621,66 @@
                         if (stockError) return;
                         const size = sizeNode.dataset.size;
                         const quantityInput = sizeNode.parentElement.parentElement.querySelector('.quantity-input');
-                        const quantity = parseInt(quantityInput.value, 10) || 0;
+                        const quantityToAdd = parseInt(quantityInput.value, 10) || 0;
                         
-                        if (quantity <= 0) return;
+                        if (quantityToAdd <= 0) return;
 
-                        const availableStock = selectedColorData.stockBySize?.[size] || 0;
-                        const itemInCart = cart.find(item => item.id.startsWith(`${productId}-${selectedColorName}-${size}`));
-                        const quantityInCart = itemInCart ? itemInCart.quantity : 0;
+                        const totalStock = selectedColorData.stockBySize?.[size] || 0;
+                        
+                        // Check existing cart quantity for just IN STOCK items
+                        const baseId = `${productId}-${selectedColorName}-${size}-${itemDetails.designId || 'no-design'}`;
+                        const existingInstockItem = cart.find(item => item.id === `${baseId}-instock`);
+                        const currentInstockQtyInCart = existingInstockItem ? existingInstockItem.quantity : 0;
+                        
+                        const remainingRealStock = Math.max(0, totalStock - currentInstockQtyInCart);
                         
                         // Strict check ONLY if backorder is disabled
-                        if (product.allowBackorder !== true && quantity > (availableStock - quantityInCart)) {
-                            showToast(`Only ${availableStock - quantityInCart} left for size ${size}.`, true);
+                        if (product.allowBackorder !== true && quantityToAdd > remainingRealStock) {
+                            showToast(`Only ${remainingRealStock} left for size ${size}.`, true);
                             stockError = true;
                             return;
                         }
 
-                        const item = {
-                            id: `${productId}-${selectedColorName}-${size}-${itemDetails.designId || 'no-design'}`,
+                        // Split logic: Determine how many go to 'instock' vs 'backorder'
+                        let qtyForInstock = 0;
+                        let qtyForBackorder = 0;
+
+                        if (quantityToAdd <= remainingRealStock) {
+                            qtyForInstock = quantityToAdd;
+                        } else {
+                            qtyForInstock = remainingRealStock; // Take whatever is left
+                            qtyForBackorder = quantityToAdd - remainingRealStock; // Put rest in backorder
+                        }
+
+                        const itemBase = {
                             productId: productId,
                             name: product.name,
                             price: product.price,
                             color: selectedColorName,
                             size: size,
                             image: selectedColorEl.dataset.image,
-                            quantity: quantity,
                             ...(itemDetails.designId && { design: { name: itemDetails.designName } })
                         };
-                        addToCart(item);
-                        totalQuantityAdded += quantity;
+
+                        if (qtyForInstock > 0) {
+                            addToCart({
+                                ...itemBase,
+                                id: `${baseId}-instock`,
+                                quantity: qtyForInstock,
+                                stockStatus: 'instock'
+                            });
+                        }
+
+                        if (qtyForBackorder > 0) {
+                            addToCart({
+                                ...itemBase,
+                                id: `${baseId}-backorder`,
+                                quantity: qtyForBackorder,
+                                stockStatus: 'backorder'
+                            });
+                        }
+
+                        totalQuantityAdded += quantityToAdd;
                     });
 
                     if (totalQuantityAdded > 0 && !stockError) {
@@ -683,26 +717,16 @@
                 } else {
                     emptyCartMessage.style.display = 'none';
                     cart.forEach(item => {
-                        // --- NEW: Calculate Stock Status for Message ---
-                        const product = products.find(p => p.id === item.productId);
+                        // Determine Message based on stored stockStatus
                         let statusMsg = '';
+                        const product = products.find(p => p.id === item.productId);
                         
-                        if (product) {
-                            const colorData = product.colors.find(c => c.name === item.color);
-                            const availableStock = colorData ? (colorData.stockBySize[item.size] || 0) : 0;
-                            
-                            // If stock is less than what user wants (meaning they are buying backorder/out of stock items)
-                            if (availableStock < item.quantity) {
-                                if (product.allowBackorder) {
-                                    const msg = product.backorderMessage || "Delivery in 10-15 days";
-                                    statusMsg = `<p class="text-[10px] text-orange-600 font-bold mt-1 bg-orange-50 inline-block px-2 py-0.5 rounded border border-orange-200">⚠️ ${msg}</p>`;
-                                } else {
-                                    // This theoretically shouldn't happen if validation works, but good for safety
-                                    statusMsg = `<p class="text-[10px] text-red-600 font-bold mt-1">⚠️ Out of Stock (Available: ${availableStock})</p>`;
-                                }
-                            }
+                        if (item.stockStatus === 'backorder' && product) {
+                             const msg = product.backorderMessage || "Delivery in 10-15 days";
+                             statusMsg = `<p class="text-[10px] text-orange-600 font-bold mt-1 bg-orange-50 inline-block px-2 py-0.5 rounded border border-orange-200">⚠️ ${msg}</p>`;
+                        } else if (item.stockStatus === 'instock') {
+                            statusMsg = `<p class="text-[10px] text-green-600 font-bold mt-1">✓ In Stock & Ready to Ship</p>`;
                         }
-                        // -----------------------------------------------
 
                         const cartItemEl = document.createElement('div');
                         cartItemEl.className = 'flex items-start sm:items-center space-x-4 mb-5 pb-5 border-b last:border-b-0 cart-item-enter';
@@ -740,15 +764,29 @@
 
                 const currentItem = cart[itemIndex];
                 const product = products.find(p => p.id === currentItem.productId);
-                const colorData = product.colors.find(c => c.name === currentItem.color);
-                const totalStock = colorData.stockBySize?.[currentItem.size] || 0;
+                
+                // Safety check if product exists (it should)
+                if(!product) {
+                    cart.splice(itemIndex, 1);
+                    updateCart();
+                    return;
+                }
 
                 if (action === 'increase') {
-                    // Only enforce stock limit if backorder is DISABLED
-                    if (product.allowBackorder !== true && currentItem.quantity >= totalStock) {
-                        showToast(`No more items left in stock!`, true);
+                    if (currentItem.stockStatus === 'instock') {
+                         const colorData = product.colors.find(c => c.name === currentItem.color);
+                         const totalStock = colorData.stockBySize?.[currentItem.size] || 0;
+                         
+                         // For 'instock' items, we MUST respect physical stock limits
+                         // Note: We don't subtract backorder quantity here because backorder items are virtual/negative stock
+                         if (currentItem.quantity >= totalStock) {
+                            showToast(`No more physical stock available. Add more as Backorder via main page.`, true);
+                            return; 
+                         }
+                         currentItem.quantity++;
                     } else {
-                        currentItem.quantity++;
+                         // Backorder items can be increased freely (up to a reasonable limit like 100)
+                         currentItem.quantity++;
                     }
                 } else if (action === 'decrease') {
                     currentItem.quantity--;
@@ -869,11 +907,12 @@
 
                 summaryItemsContainer.innerHTML = '';
                 lastOrder.forEach(item => {
+                    let typeLabel = item.stockStatus === 'backorder' ? '(Backorder)' : '';
                     const itemEl = document.createElement('div');
                     itemEl.className = 'flex justify-between items-start';
                     itemEl.innerHTML = `
                         <div>
-                            <p class="font-semibold">${item.name}</p>
+                            <p class="font-semibold">${item.name} <span class="text-xs font-normal text-gray-500">${typeLabel}</span></p>
                             <p class="text-sm text-gray-600">(${item.color}, ${item.size}${item.design ? ', ' + item.design.name : ''})</p>
                             <p class="text-sm text-gray-500">${item.quantity} x ₹${item.price}</p>
                         </div>
@@ -934,7 +973,8 @@
                 
                 message += `*Order Summary:*\n\n`;
                 lastOrder.forEach((item, index) => {
-                    message += `*${index + 1}. ${item.name}*\n   - Color: ${item.color}\n   - Size: ${item.size}\n`;
+                    const typeLabel = item.stockStatus === 'backorder' ? ' (Backorder)' : '';
+                    message += `*${index + 1}. ${item.name}${typeLabel}*\n   - Color: ${item.color}\n   - Size: ${item.size}\n`;
                     if (item.design) message += `   - Design: ${item.design.name}\n`;
                     message += `   - Quantity: ${item.quantity}\n   - Price: ₹${item.price}\n\n`;
                 });
