@@ -420,15 +420,12 @@
                     if (!firstColor) return; // Skip rendering if a product has no colors
 
                     const colorSwatches = product.colors.map((color, index) => `
-                        <div class="flex flex-col items-center">
-                            <button class="color-swatch w-8 h-8 rounded-full border-2 border-white ring-1 ring-gray-300 ${index === 0 ? 'selected' : ''}" 
-                                    style="background-color: ${color.hex};" 
-                                    data-color="${color.name}"
-                                    data-image="${color.image}"
-                                    title="${color.name}">
-                            </button>
-                            <span class="text-[10px] text-gray-600 font-medium mt-1 capitalize pointer-events-none text-center">${color.name}</span>
-                        </div>
+                        <button class="color-swatch w-8 h-8 rounded-full border-2 border-white ring-1 ring-gray-300 ${index === 0 ? 'selected' : ''}" 
+                                style="background-color: ${color.hex};" 
+                                data-color="${color.name}"
+                                data-image="${color.image}"
+                                title="${color.name}">
+                        </button>
                     `).join('');
 
                     const sizeButtons = generateSizeHTML(product, firstColor, cart);
@@ -446,7 +443,7 @@
                             
                             <div class="mb-4">
                                 <h3 class="text-sm font-semibold mb-2 text-gray-700">Color</h3>
-                                <div class="flex flex-wrap items-start gap-3">
+                                <div class="flex items-center space-x-2">
                                     ${colorSwatches}
                                 </div>
                             </div>
