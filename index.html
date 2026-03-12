@@ -420,12 +420,15 @@
                     if (!firstColor) return; // Skip rendering if a product has no colors
 
                     const colorSwatches = product.colors.map((color, index) => `
-                        <button class="color-swatch w-8 h-8 rounded-full border-2 border-white ring-1 ring-gray-300 ${index === 0 ? 'selected' : ''}" 
-                                style="background-color: ${color.hex};" 
-                                data-color="${color.name}"
-                                data-image="${color.image}"
-                                title="${color.name}">
-                        </button>
+                        <div class="flex flex-col items-center gap-1">
+                            <button class="color-swatch w-8 h-8 rounded-full border-2 border-white ring-1 ring-gray-300 ${index === 0 ? 'selected' : ''}" 
+                                    style="background-color: ${color.hex};" 
+                                    data-color="${color.name}"
+                                    data-image="${color.image}"
+                                    title="${color.name}">
+                            </button>
+                            <span class="text-xs text-gray-500 font-medium">${color.name}</span>
+                        </div>
                     `).join('');
 
                     const sizeButtons = generateSizeHTML(product, firstColor, cart);
@@ -443,7 +446,7 @@
                             
                             <div class="mb-4">
                                 <h3 class="text-sm font-semibold mb-2 text-gray-700">Color</h3>
-                                <div class="flex items-center space-x-2">
+                                <div class="flex flex-wrap items-start gap-3">
                                     ${colorSwatches}
                                 </div>
                             </div>
@@ -822,68 +825,13 @@
             cartModal.addEventListener('click', (e) => e.target === cartModal && closeCart());
 
             // --- CUSTOMER DETAILS & ORDER LOGIC ---
-            const processOrder = async () => {
+            whatsappBtn.addEventListener('click', () => {
                 if (cart.length === 0) return;
                 
-                whatsappBtn.disabled = true;
-                whatsappBtn.innerHTML = `<span>Processing...</span>`;
-
-                try {
-                    await runTransaction(db, async (transaction) => {
-                        const productsInCart = {};
-                        cart.forEach(item => {
-                            if (!productsInCart[item.productId]) productsInCart[item.productId] = [];
-                            productsInCart[item.productId].push(item);
-                        });
-
-                        const productRefs = {}, productDocs = {};
-                        for (const productId in productsInCart) {
-                            const docRef = doc(db, productsCollectionPath, productId);
-                            productRefs[productId] = docRef;
-                            const productDoc = await transaction.get(docRef);
-                            if (!productDoc.exists()) throw new Error(`Product ${productId} not found!`);
-                            productDocs[productId] = productDoc.data();
-                        }
-
-                        for (const productId in productsInCart) {
-                            const items = productsInCart[productId];
-                            const productData = productDocs[productId];
-                            items.forEach(item => {
-                                const colorIndex = productData.colors.findIndex(c => c.name === item.color);
-                                if (colorIndex === -1) throw new Error(`Color ${item.color} not found.`);
-                                const currentStock = productData.colors[colorIndex].stockBySize[item.size];
-                                if (currentStock === undefined) throw new Error(`Size ${item.size} not found.`);
-                                
-                                const newStock = currentStock - item.quantity;
-                                
-                                // BLOCK Order only if negative stock AND Backorder Disabled
-                                if (productData.allowBackorder !== true && newStock < 0) {
-                                     throw new Error(`Not enough stock for ${item.name} (${item.size}). Only ${currentStock} left.`);
-                                }
-                                
-                                productData.colors[colorIndex].stockBySize[item.size] = newStock;
-                            });
-                            transaction.update(productRefs[productId], { colors: productData.colors });
-                        }
-                    });
-                    
-                    localStorage.setItem(orderStorageKey, JSON.stringify(cart));
-                    cart = [];
-                    updateCart();
-                    closeCart();
-                    setTimeout(openSummary, 300);
-
-                } catch (e) {
-                    console.error("Order failed:", e);
-                    showToast(e.message || "Order failed. Stock may have changed.", true);
-                } finally {
-                    whatsappBtn.disabled = false;
-                    whatsappBtn.innerHTML = `<span>Review & Order</span>`;
-                }
-            };
-
-            whatsappBtn.addEventListener('click', async () => {
-               await processOrder();
+                // Save current cart for the summary screen without clearing it or updating stock yet
+                localStorage.setItem(orderStorageKey, JSON.stringify(cart));
+                closeCart();
+                setTimeout(openSummary, 300);
             });
 
             const renderOrderSummary = () => {
@@ -959,28 +907,88 @@
             viewOrderBtn.addEventListener('click', openSummary);
             closeSummaryBtn.addEventListener('click', closeSummary);
 
-            confirmOrderBtn.addEventListener('click', () => {
+            confirmOrderBtn.addEventListener('click', async () => {
                 const lastOrder = JSON.parse(localStorage.getItem(orderStorageKey));
                 const visitor = JSON.parse(localStorage.getItem(visitorDetailsKey));
                 if (!lastOrder || lastOrder.length === 0) return;
                 
-                let message = `*New Order for LAFANDAR*\n\n`;
-                if (visitor) {
-                    message += `*Customer Details:*\n`;
-                    message += `*Name:* ${visitor.name}\n`;
-                    message += `*Mobile:* ${visitor.mobile}\n\n`;
+                confirmOrderBtn.disabled = true;
+                const originalBtnHtml = confirmOrderBtn.innerHTML;
+                confirmOrderBtn.innerHTML = `<span>Processing...</span>`;
+
+                try {
+                    // --- UPDATE STOCK ON FIREBASE ONLY NOW ---
+                    await runTransaction(db, async (transaction) => {
+                        const productsInCart = {};
+                        lastOrder.forEach(item => {
+                            if (!productsInCart[item.productId]) productsInCart[item.productId] = [];
+                            productsInCart[item.productId].push(item);
+                        });
+
+                        const productRefs = {}, productDocs = {};
+                        for (const productId in productsInCart) {
+                            const docRef = doc(db, productsCollectionPath, productId);
+                            productRefs[productId] = docRef;
+                            const productDoc = await transaction.get(docRef);
+                            if (!productDoc.exists()) throw new Error(`Product ${productId} not found!`);
+                            productDocs[productId] = productDoc.data();
+                        }
+
+                        for (const productId in productsInCart) {
+                            const items = productsInCart[productId];
+                            const productData = productDocs[productId];
+                            items.forEach(item => {
+                                const colorIndex = productData.colors.findIndex(c => c.name === item.color);
+                                if (colorIndex === -1) throw new Error(`Color ${item.color} not found.`);
+                                const currentStock = productData.colors[colorIndex].stockBySize[item.size];
+                                if (currentStock === undefined) throw new Error(`Size ${item.size} not found.`);
+                                
+                                const newStock = currentStock - item.quantity;
+                                
+                                // BLOCK Order only if negative stock AND Backorder Disabled
+                                if (productData.allowBackorder !== true && newStock < 0) {
+                                     throw new Error(`Not enough stock for ${item.name} (${item.size}). Only ${currentStock} left.`);
+                                }
+                                
+                                productData.colors[colorIndex].stockBySize[item.size] = newStock;
+                            });
+                            transaction.update(productRefs[productId], { colors: productData.colors });
+                        }
+                    });
+
+                    // Clear the cart now that transaction is completely successful
+                    cart = [];
+                    updateCart();
+
+                    // Generate WhatsApp message
+                    let message = `*New Order for LAFANDAR*\n\n`;
+                    if (visitor) {
+                        message += `*Customer Details:*\n`;
+                        message += `*Name:* ${visitor.name}\n`;
+                        message += `*Mobile:* ${visitor.mobile}\n\n`;
+                    }
+                    
+                    message += `*Order Summary:*\n\n`;
+                    lastOrder.forEach((item, index) => {
+                        const typeLabel = item.stockStatus === 'backorder' ? ' (Backorder)' : '';
+                        message += `*${index + 1}. ${item.name}${typeLabel}*\n   - Color: ${item.color}\n   - Size: ${item.size}\n`;
+                        if (item.design) message += `   - Design: ${item.design.name}\n`;
+                        message += `   - Quantity: ${item.quantity}\n   - Price: ₹${item.price}\n\n`;
+                    });
+                    const subtotal = lastOrder.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+                    message += `--------------------\n*Total Items:* ${lastOrder.reduce((sum, item) => sum + item.quantity, 0)}\n*Grand Total:* ₹${subtotal.toFixed(2)}\n\nPlease confirm my order. Thank you!`;
+                    
+                    window.open(`https://wa.me/${whatsAppNumber}?text=${encodeURIComponent(message)}`, '_blank');
+                    
+                    closeSummary();
+
+                } catch (e) {
+                    console.error("Order failed:", e);
+                    showToast(e.message || "Order failed. Stock may have changed.", true);
+                } finally {
+                    confirmOrderBtn.disabled = false;
+                    confirmOrderBtn.innerHTML = originalBtnHtml;
                 }
-                
-                message += `*Order Summary:*\n\n`;
-                lastOrder.forEach((item, index) => {
-                    const typeLabel = item.stockStatus === 'backorder' ? ' (Backorder)' : '';
-                    message += `*${index + 1}. ${item.name}${typeLabel}*\n   - Color: ${item.color}\n   - Size: ${item.size}\n`;
-                    if (item.design) message += `   - Design: ${item.design.name}\n`;
-                    message += `   - Quantity: ${item.quantity}\n   - Price: ₹${item.price}\n\n`;
-                });
-                const subtotal = lastOrder.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-                message += `--------------------\n*Total Items:* ${lastOrder.reduce((sum, item) => sum + item.quantity, 0)}\n*Grand Total:* ₹${subtotal.toFixed(2)}\n\nPlease confirm my order. Thank you!`;
-                window.open(`https://wa.me/${whatsAppNumber}?text=${encodeURIComponent(message)}`, '_blank');
             });
 
             // --- DESIGN PREVIEW MODAL LOGIC ---
